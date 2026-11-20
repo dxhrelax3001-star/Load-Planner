@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hướng dẫn sử dụng — Load Planner</title>
+<style>
+  :root { --text: #1f2328; --muted: #5f6670; --line: #e3e6ea; --bg: #f6f7f9; --panel: #fff; --accent: #1d2b44; --blue: #1a73e8; --sel: #e8f0fe; --tip: #fff8e1; --warn: #fdecea; --run: #22a35a; }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; font: 15px/1.65 "Segoe UI", Arial, sans-serif; color: var(--text); background: var(--bg); }
+  a { color: var(--blue); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  header { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 10px; padding: 10px 20px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .logo { background: var(--accent); color: #fff; font-size: 15px; padding: 3px 6px; border-radius: 6px; }
+  header b { font-size: 16px; }
+  header .sp { flex: 1; }
+  header a.btn { border: 1px solid var(--line); border-radius: 8px; padding: 5px 12px; color: var(--text); }
+  header a.btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .wrap { display: flex; max-width: 1180px; margin: 0 auto; }
+  nav.toc { position: sticky; top: 52px; align-self: flex-start; width: 250px; max-height: calc(100vh - 52px); overflow-y: auto; padding: 22px 10px 40px 20px; font-size: 13.5px; }
+  nav.toc b { display: block; margin: 0 0 8px; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+  nav.toc a { display: block; padding: 3px 8px; border-radius: 6px; color: var(--text); }
+  nav.toc a:hover { background: var(--sel); text-decoration: none; }
+  nav.toc a.sub { padding-left: 20px; color: var(--muted); font-size: 13px; }
+  main { flex: 1; min-width: 0; padding: 22px 24px 80px; }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 6px 26px 18px; margin-bottom: 18px; }
+  h1 { font-size: 26px; margin: 10px 0 4px; }
+  .lead { color: var(--muted); margin: 0 0 18px; }
+  h2 { font-size: 20px; margin: 18px 0 8px; padding-top: 4px; }
+  h3 { font-size: 16px; margin: 18px 0 6px; }
+  p { margin: 6px 0 10px; }
+  ol, ul { margin: 6px 0 12px; padding-left: 24px; }
+  li { margin: 3px 0; }
+  code { background: #f1f3f5; padding: 0 4px; border-radius: 4px; font-size: 13px; }
+  .k { display: inline-block; min-width: 22px; padding: 0 6px; border: 1px solid #c9ced4; border-bottom-width: 2px; border-radius: 5px; background: #fafbfc; font: 12.5px/20px Consolas, monospace; text-align: center; white-space: nowrap; }
+  .t { display: inline-block; padding: 0 7px; border-radius: 6px; background: var(--sel); color: var(--blue); font-weight: 600; font-size: 13.5px; white-space: nowrap; }
+  .t.run { background: #e6f6ec; color: var(--run); }
+  .box { border-radius: 10px; padding: 10px 14px; margin: 10px 0 14px; font-size: 14px; }
+  .tip { background: var(--tip); border-left: 4px solid #f9ab00; }
+  .warn { background: var(--warn); border-left: 4px solid #d93025; }
+  .note { background: var(--sel); border-left: 4px solid var(--blue); }
+  .box b:first-child { display: block; margin-bottom: 2px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 14px; font-size: 14px; }
+  th, td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; vertical-align: top; }
+  th { background: #f1f3f5; font-weight: 600; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; margin: 10px 0 14px; }
+  .card { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 14px; }
+  .card .ic { font-size: 20px; }
+  .card b { display: block; margin: 2px 0; }
+  .muted { color: var(--muted); }
+  .top { float: right; font-size: 12.5px; margin-top: 22px; }
+  .plus { display: inline-block; width: 18px; height: 18px; border-radius: 50%; background: #1e88e5; color: #fff; font-weight: 700; text-align: center; line-height: 18px; font-size: 14px; border: 2px solid #fff; box-shadow: 0 0 0 1px #1e88e5; vertical-align: -3px; }
+  .sug { display: inline-block; min-width: 18px; padding: 0 4px; border: 2px solid #ff8c00; color: #e65100; font-weight: 700; border-radius: 3px; text-align: center; line-height: 16px; font-size: 13px; }
+  @media (max-width: 860px) { nav.toc { display: none; } main { padding: 14px 12px 60px; } section { padding: 4px 16px 14px; } }
+  @media print {
+    header, nav.toc, .top { display: none !important; }
+    body { background: #fff; font-size: 12.5px; }
+    main { padding: 0; }
+    section { border: none; padding: 0; margin: 0 0 10px; page-break-inside: auto; }
+    h2 { page-break-after: avoid; }
+    a { color: var(--text); }
+  }
+</style>
+</head>
+<body>
+<header>
+  <span class="logo">📦</span><b>Load Planner</b><span class="muted">— Hướng dẫn sử dụng</span>
+  <span class="sp"></span>
+  <a class="btn" href="javascript:print()" title="In hoặc lưu hướng dẫn thành file PDF">🖨 In / Lưu PDF</a>
+  <a class="btn primary" href="./">Mở ứng dụng</a>
+</header>
+
+<div class="wrap">
+<nav class="toc">
+  <b>Mục lục</b>
+  <a href="#gioi-thieu">1. Giới thiệu</a>
+  <a href="#nhanh">2. Bắt đầu nhanh (5 bước)</a>
+  <a href="#giao-dien">3. Giao diện</a>
+  <a href="#du-an">4. Dự án: mới, mở, lưu</a>
+  <a href="#container">5. Chọn container / xe</a>
+  <a href="#kien">6. Danh sách kiện hàng</a>
+  <a class="sub" href="#xoay">Kiểu xoay</a>
+  <a class="sub" href="#rang-buoc">Chồng, chịu tải, sàn, ưu tiên</a>
+  <a class="sub" href="#excel">Nhập từ Excel</a>
+  <a class="sub" href="#mau">Màu kiện</a>
+  <a href="#tinh">7. Tính toán tự động</a>
+  <a href="#xem">8. Xem kết quả 3D</a>
+  <a href="#xep-tay">9. Xếp tay</a>
+  <a class="sub" href="#dat-kien">Đặt kiện</a>
+  <a class="sub" href="#goi-y">Nút ＋ trên kiện</a>
+  <a class="sub" href="#sua-kien">Di chuyển, xoay, xoá</a>
+  <a class="sub" href="#nhieu-kien">Chọn nhiều, copy / dán</a>
+  <a class="sub" href="#cont">Thêm / xoá container</a>
+  <a href="#xuat">10. Xuất PDF, Excel, in</a>
+  <a href="#phim-tat">11. Phím tắt</a>
+  <a href="#luu-y">12. Lưu ý &amp; giới hạn</a>
+  <a href="#hoi-dap">13. Hỏi đáp nhanh</a>
+</nav>
+
+<main>
+<section id="gioi-thieu">
+  <h1>Hướng dẫn sử dụng Load Planner</h1>
+  <p class="lead">Ứng dụng lên phương án xếp hàng vào container / xe tải, xem 3D, chỉnh tay từng kiện và xuất báo cáo PDF — chạy ngay trên trình duyệt Chrome.</p>
+  <p class="muted" style="font-size:13px;margin-top:-10px">Cập nhật lần cuối: 18/11/2026</p>
+  <h2>1. Giới thiệu</h2>
+  <div class="grid">
+    <div class="card"><span class="ic">🚚</span><b>Nhiều loại cont / xe</b>Cont 20DC, 40DC, 40HC, 45HC, cont lạnh, xe tải, sơ mi rơ moóc, pallet — hoặc tự nhập kích thước.</div>
+    <div class="card"><span class="ic">⚡</span><b>Tự tính phương án</b>Máy tự xếp, tính số cont cần dùng, % thể tích, tải trọng, trọng tâm.</div>
+    <div class="card"><span class="ic">🧱</span><b>Ràng buộc thực tế</b>Hướng xoay, xếp chồng, chịu tải, chỉ đặt sàn, thứ tự giao hàng.</div>
+    <div class="card"><span class="ic">✋</span><b>Xếp tay</b>Tự đặt, di chuyển, xoay, copy / dán từng kiện hoặc cả nhóm, có gợi ý vị trí.</div>
+    <div class="card"><span class="ic">🎬</span><b>Trình tự xếp</b>Xem từng bước xếp hàng trên mô hình 3D.</div>
+    <div class="card"><span class="ic">📄</span><b>Báo cáo</b>PDF (mẫu chuẩn / chi tiết có cắt lớp), Excel, in trực tiếp.</div>
+  </div>
+  <div class="box note"><b>Dữ liệu của bạn ở đâu?</b>Dự án được lưu ngay trong trình duyệt trên máy bạn (tự lưu khi chỉnh sửa) — không gửi lên máy chủ. Muốn chuyển sang máy khác hoặc gửi người khác: bấm <span class="t">💾 Lưu</span> ra file <code>.json</code>.</div>
+  <p><b>Địa chỉ mở ứng dụng:</b></p>
+  <ul>
+    <li>Trên máy cài đặt: <code>http://localhost:3200</code></li>
+    <li>Từ máy khác / qua Internet: link chia sẻ do quản trị cung cấp (dạng <code>https://…ts.net:8443/</code>).</li>
+  </ul>
+  <p class="muted">Nên dùng Google Chrome hoặc Microsoft Edge bản mới. Cần Internet để tải thư viện 3D khi mở trang.</p>
+</section>
+
+<section id="nhanh">
+  <a class="top" href="#">↑ Lên đầu</a>
+  <h2>2. Bắt đầu nhanh (5 bước)</h2>
+  <ol>
+    <li><b>Chọn container:</b> ở khung <b>🚚 Phương tiện / Container</b>, chọn loại cont (ví dụ Cont 40HC).</li>
+    <li><b>Nhập kiện hàng:</b> ở khung <b>📋 Danh sách kiện hàng</b>, nhập tên, Dài / Rộng / Cao (mm), số lượng, Kg — hoặc <span class="t">📥 Nhập Excel</span> / <span class="t">📋 Dán từ Excel</span>.</li>
+    <li><b>Chọn ràng buộc:</b> cột Xoay, Chồng, Chịu tải, Sàn, Ưu tiên cho từng loại kiện.</li>
+    <li>Bấm <span class="t run">⚡ Tính toán xếp hàng</span> → xem kết quả 3D bên phải.</li>
+    <li>Chỉnh tay nếu cần (<span class="t">✋ Xếp tay</span>), rồi <span class="t">📄 Xuất PDF</span> để gửi kho / khách hàng.</li>
+  </ol>
+  <div class="box tip"><b>Mẹo</b>Mở ứng dụng lần đầu sẽ có sẵn một <b>dự án mẫu</b> (tủ, bàn, ghế, kệ, gương) — bấm Tính toán thử để làm quen.</div>
+</section>
+
+<section id="giao-dien">
+  <a class="top" href="#">↑ Lên đầu</a>
+  <h2>3. Giao diện</h2>
+  <table>
+    <tr><th style="width:26%">Khu vực</th><th>Chức năng</th></tr>
+    <tr><td>Thanh trên cùng</td><td>Mới, Mở, Lưu dự án · Nhập Excel, File mẫu · Xuất Excel, Xuất PDF, In.</td></tr>
+    <tr><td>Cột trái — Container</td><td>Danh sách loại cont / xe dùng để xếp, số lượng từng loại, tuỳ chọn thuật toán.</td></tr>
+    <tr><td>Cột trái — Kiện hàng</td><td>Bảng kiện hàng, bảng màu, nút <b>⚡ Tính toán xếp hàng</b>.</td></tr>
+    <tr><td>Bên phải — Tab container</td><td>Mỗi container trong phương án là một tab: <b>#1 40HC · 186 kiện</b>. Bấm để xem, <b>✕</b> để xoá, <b>＋ Cont</b> thêm cont trống, <b>Xoá tất cả</b>.</td></tr>
+    <tr><td>Bên phải — Khung 3D</td><td>Mô hình container và kiện hàng; bảng số liệu (thể tích, tải trọng, trọng tâm) ở góc trái trên.</td></tr>
+    <tr><td>Nút góc nhìn</td><td><b>✋ Xếp tay</b>, <b>3D</b>, <b>Trên</b>, <b>Cạnh</b>, <b>Cửa</b>, tích <b>Vách</b> (hiện vỏ cont), <b>Số bước</b> (hiện số thứ tự trên kiện).</td></tr>
+    <tr><td>Thanh trình tự</td><td>⏮ ◀ ▶ ▶| ⏭ và thanh kéo để xem từng bước xếp.</td></tr>
+    <tr><td>Dưới cùng</td><td>Tóm tắt kết quả, kiện chưa xếp được, chú thích màu từng loại kiện.</td></tr>
+  </table>
+  <p><b>Chỉnh độ rộng 2 phần:</b> kéo <b>thanh chia ⋮</b> giữa phần nhập liệu (trái) và khung 3D (phải) sang trái / phải. Độ rộng được nhớ cho lần mở sau; <b>bấm đúp</b> vào thanh chia để về mặc định.</p>
+  <p><b>Điều khiển góc nhìn 3D:</b> kéo chuột trái để xoay, kéo chuột phải để dời, lăn chuột để phóng to / thu nhỏ. Rê chuột lên kiện để xem thông tin.</p>
+</section>
+
+<section id="du-an">
+  <a class="top" href="#">↑ Lên đầu</a>
+  <h2>4. Dự án: mới, mở, lưu</h2>
+  <p><b>Tên dự án:</b> nhập ở ô <span class="t">📁 Dự án</span> trên thanh trên cùng. Tên này dùng làm tên file khi lưu, tiêu đề báo cáo Excel / In, dòng <b>Project</b> và chân trang <b>Source</b> của PDF, và là giá trị mặc định của ô Report khi xuất PDF.</p>
+  <ul>
+    <li><span class="t">🗋 Mới</span>: tạo dự án trống (xoá danh sách kiện hiện tại — hãy lưu trước nếu cần).</li>
+    <li><span class="t">💾 Lưu</span>: đặt tên và tải file dự án <code>.json</code> về máy (gồm cont, kiện hàng và cả phương án đã chỉnh tay).</li>
+    <li><span class="t">📂 Mở</span>: mở lại file <code>.json</code> đã lưu.</li>
+  </ul>
+  <div class="box tip"><b>Tự lưu</b>Mọi thay đổi được tự lưu trong trình duyệt — đóng tab rồi mở lại vẫn còn. Nhưng xoá dữ liệu trình duyệt hoặc đổi máy / trình duyệt khác thì sẽ mất, nên lưu file <code>.json</code> cho các lô hàng quan trọng.</div>
+</section>
+
+<section id="container">
+  <a class="top" href="#">↑ Lên đầu</a>
+  <h2>5. Chọn container / xe</h2>
+  <p>Mỗi dòng trong bảng <b>🚚 Phương tiện / Container</b> là một loại cont / xe:</p>
+  <ul>
+    <li><b>Loại cont / xe:</b> chọn mẫu có sẵn → kích thước lòng trong và tải trọng tự điền. Chọn <b>Tuỳ chỉnh…</b> hoặc sửa số để dùng kích thước riêng.</li>
+    <li><b>Dài / Rộng / Cao trong</b> (mm) và <b>Tải (kg)</b> — tải trọng hàng tối đa.</li>
+    <li><b>Số lượng:</b> số cont loại này được dùng. <b>Để trống = tự động</b> (dùng bao nhiêu tuỳ lượng hàng).</li>
+  </ul>
+  <table>
+    <tr><th>Mẫu</th><th>Lòng trong (mm)</th><th>Tải hàng tối đa (kg)</th></tr>
+    <tr><td>Cont 20DC</td><td>5800 × 2340 × 2380</td><td>28 300</td></tr>
+    <tr><td>Cont 40DC</td><td>11950 × 2340 × 2380</td><td>28 870</td></tr>
+    <tr><td>Cont 40HC</td><td>11950 × 2340 × 2680</td><td>28 690</td></tr>
+    <tr><td>Cont 45HC</td><td>13530 × 2340 × 2680</td><td>27 650</td></tr>
+  </table>
+  <p class="muted" style="font-size:13px">Ngoài ra có cont lạnh 20' / 40' HC, xe tải 2.5 / 5 / 8 tấn, sơ mi rơ moóc 13.6 m, pallet EUR và pallet 1219×1016. Tải trọng tham khảo theo công bố của hãng tàu Maersk.</p>
+  <h3>Dùng nhiều loại cont</h3>
+  <p>Bấm <span class="t">＋ Thêm loại cont</span> để thêm dòng. Máy xếp <b>lần lượt theo thứ tự dòng</b>: dùng hết số lượng của dòng 1 rồi mới sang dòng 2. Ví dụ: dòng 1 = 2 × 40HC, dòng 2 = 20DC để trống → xếp đầy 2 cont 40HC, phần còn lại vào cont 20DC.</p>
+  <div class="box note"><b>Còn hàng nhưng hết cont?</b>Nếu mọi dòng đều có số lượng mà vẫn còn hàng, phần dư hiện trong mục <b>Chưa xếp được</b> ở dưới khung 3D.</div>
+  <h3>⚙️ Tuỳ chọn thuật toán</h3>
+  <ul>
+    <li><b>Diện tích đỡ tối thiểu (%):</b> kiện đặt lên trên phải được đỡ ít nhất bao nhiêu % mặt đáy (mặc định 75%).</li>
+    <li><b>Chiến lược sắp xếp:</b> để <b>Tự động</b> (thử tất cả, chọn phương án tốt nhất) hoặc chọn cố định: thể tích lớn trước, đáy lớn trước, cao trước, cạnh dài trước, nặng trước.</li>
+    <li><b>Số container tối đa:</b> giới hạn số cont khi để số lượng tự động.</li>
+  </ul>
+</section>
+
+<section id="kien">
+  <a class="top" href="#">↑ Lên đầu</a>
+  <h2>6. Danh sách kiện hàng</h2>
+  <p>Mỗi dòng là <b>một loại kiện</b> (cùng kích thước). Bấm <span class="t">＋ Thêm kiện</span> để thêm dòng, <b>✕</b> cuối dòng để xoá.</p>
+  <table>
+    <tr><th style="width:20%">Cột</th><th>Ý nghĩa</th></tr>
+    <tr><td>Ô màu</td><td>Màu hiển thị của loại kiện trên 3D và báo cáo.</td></tr>
+    <tr><td>Tên / Mã kiện</td><td>Tên hoặc mã hàng.</td></tr>
+    <tr><td>Dài · Rộng · Cao</td><td>Kích thước kiện (mm). Dòng bị tô đỏ = kiện không vừa container với các hướng xoay cho phép.</td></tr>
+    <tr><td>SL</td><td>Số lượng kiện.</td></tr>
+    <tr><td>Kg</td><td>Trọng lượng 1 kiện.</td></tr>
+    <tr><td>Xoay</td><td>Các hướng được phép đặt kiện (xem bên dưới).</td></tr>
+    <tr><td>Chồng</td><td>Tích = cho phép xếp kiện khác lên trên.</td></tr>
+    <tr><td>Chịu tải</td><td>Tổng kg tối đa được đè lên kiện. Để trống = không giới hạn.</td></tr>
+    <tr><td>Sàn</td><td>Tích = kiện chỉ được đặt trên sàn cont.</td></tr>
+    <tr><td>Ưu tiên</td><td>Thứ tự xếp: 1 xếp trước (vào sâu trong cùng), số lớn hơn xếp sau (gần cửa).</td></tr>
+  </table>
+
+  <h3 id="xoay">Kiểu xoay</h3>
+  <table>
+    <tr><th style="width:24%">Lựa chọn</th><th>Ý nghĩa</th></tr>
+    <tr><td>Tự do</td><td>6 hướng — mặt nào làm đáy cũng được.</td></tr>
+    <tr><td>Đứng</td><td>Mặt trên luôn hướng lên (This side up), chỉ xoay ngang 90° — 2 hướng.</td></tr>
+    <tr><td>Cố định</td><td>Không xoay: Dài theo chiều dài cont, Cao hướng lên.</td></tr>
+    <tr><td>Đứng / nằm nghiêng</td><td>Được đứng hoặc lật nằm nghiêng, không dựng đứng đầu kiện — 4 hướng.</td></tr>
+    <tr><td>Chỉ nằm nghiêng</td><td>Cạnh Rộng hướng lên — 2 hướng.</td></tr>
+    <tr><td>Chỉ dựng đứng</td><td>Cạnh Dài hướng lên — 2 hướng.</td></tr>
+    <tr><td>Dài dọc theo cont</td><td>Cạnh Dài luôn song song chiều dài cont, được lật nghiêng — 2 hướng.</td></tr>
+  </table>
+
+  <h3 id="rang-buoc">Chồng, chịu tải, sàn, ưu tiên — ví dụ</h3>
+  <ul>
+    <li><b>Gương, kính dễ vỡ:</b> bỏ tích <b>Chồng</b>, Xoay = <b>Cố định</b> hoặc <b>Đứng</b>.</li>
+    <li><b>Thùng carton yếu:</b> nhập <b>Chịu tải</b> = 100 (chỉ cho đè tối đa 100 kg).</li>
+    <li><b>Hàng nặng (máy móc):</b> tích <b>Sàn</b>.</li>
+    <li><b>Giao nhiều điểm:</b> hàng giao sau cùng để Ưu tiên 1 (vào trong), hàng giao trước để Ưu tiên 2, 3… (gần cửa).</li>
+  </ul>
+
+  <h3 id="excel">Nhập từ Excel</h3>
+  <p><b>Cách 1 — Nhập file Excel:</b></p>
+  <ol>
+    <li>Bấm <span class="t">📄 File mẫu</span> để tải file Excel mẫu đúng cột (Tên, Dài, Rộng, Cao, SL, Kg, Xoay, Xếp chồng, Chịu tải, Chỉ sàn, Ưu tiên).</li>
+    <li>Điền dữ liệu, rồi bấm <span class="t">📥 Nhập Excel</span> và chọn file (<code>.xlsx</code>, <code>.xls</code>, <code>.csv</code>).</li>
+  </ol>
+  <p><b>Cách 2 — Dán từ Excel:</b></p>
+  <ol>
+    <li>Trong Excel, bôi đen bảng (nên gồm cả dòng tiêu đề) → <span class="k">Ctrl</span>+<span class="k">C</span>.</li>
+    <li>Bấm <span class="t">📋 Dán từ Excel</span> → bấm vào ô trong hộp hiện ra → <span class="k">Ctrl</span>+<span class="k">V</span>.</li>
+    <li>Xem dòng kiểm tra ngay dưới ô, ví dụ <i>"✔ Đọc được 8 loại kiện · 1160 kiện — ví dụ: 8box/slipsheet 1080×870×930"</i>.</li>
+    <li>Bấm <span class="t">📥 Nhập vào danh sách</span>.</li>
+  </ol>
+  <h3>Chọn cách nhập khi đã có sẵn danh sách</h3>
+  <p>Nếu bảng kiện đang có dữ liệu, ứng dụng hỏi cách nhập (áp dụng cho cả Nhập Excel và Dán từ Excel):</p>
+  <table>
+    <tr><th style="width:30%">Nút</th><th>Tác dụng</th></tr>
+    <tr><td><span class="t">＋ Thêm vào cuối</span></td><td>Giữ danh sách hiện tại, thêm các kiện mới vào cuối.</td></tr>
+    <tr><td><span class="t">♻ Thay thế danh sách</span></td><td>Xoá danh sách hiện tại, thay bằng danh sách mới.</td></tr>
+    <tr><td><span class="t">✕ Huỷ</span> (hoặc <span class="k">Esc</span>)</td><td>Bỏ thao tác — không thêm dữ liệu nào, danh sách giữ nguyên. Khi đang dán, hộp dán vẫn mở để sửa lại.</td></tr>
+  </table>
+  <h3>Ứng dụng đọc được những gì</h3>
+  <ul>
+    <li>Tự nhận cột theo <b>tiêu đề</b>, không phụ thuộc thứ tự cột: Tên / Mã hàng / Sản phẩm, Dài / Chiều dài / Dài (mm), Rộng, Cao, SL / Số lượng, Kg / Trọng lượng, Xoay, Chồng, Chịu tải, Sàn, Ưu tiên — tiếng Việt có / không dấu hoặc tiếng Anh (Length, Width, Height, Qty, Weight…).</li>
+    <li>Tiêu đề không cần ở dòng 1 (có thể có dòng tên bảng phía trên).</li>
+    <li>Cột <b>Kích thước</b> gộp dạng <code>1080x870x930</code> hoặc <code>980 × 560 × 620</code>.</li>
+    <li>Số có dấu phân cách nghìn (<code>1,200</code> · <code>1.200</code>) và số thập phân (<code>48,5</code>).</li>
+    <li>Bảng <b>không có tiêu đề</b>: đọc theo thứ tự Tên, Dài, Rộng, Cao, Kg, SL.</li>
+  </ul>
+
+  <h3 id="mau">Màu kiện</h3>
+  <ul>
+    <li>Ô <span class="t">🎨</span> ở đầu bảng kiện: chọn <b>bảng màu</b> — Cổ điển, Tươi – tương phản cao, Pastel nhẹ, Tông gỗ, Đậm, Xanh dương – xám. Tất cả loại kiện đổi màu theo bảng.</li>
+    <li>Muốn đổi riêng 1 loại: bấm ô màu ở đầu dòng.</li>
+  </ul>
+  <div class="box tip"><b>Mẹo</b>Nhiều loại kiện có kích thước gần giống nhau → dùng bảng <b>Tươi – tương phản cao</b> để dễ phân biệt.</div>
+</section>
+
+<section id="tinh">
+  <a class="top" href="#">↑ Lên đầu</a>
+  <h2>7. Tính toán tự động</h2>
+  <p>Bấm <span class="t run">⚡ Tính toán xếp hàng</span>. Máy xếp từ <b>trong cùng ra cửa, từ dưới lên</b>, tôn trọng mọi ràng buộc và tải trọng cont, thử nhiều chiến lược và chọn phương án dùng ít cont nhất.</p>
+  <p>Kết quả hiện bên phải:</p>
+  <ul>
+    <li>Tab từng container với số kiện.</li>
+    <li>Bảng số liệu: số kiện, thể tích sử dụng (m³ và %), tải trọng (kg và %), chiều dài sử dụng, <b>trọng tâm</b> (cảnh báo khi lệch nhiều khỏi giữa cont).</li>
+    <li>Dưới cùng: tổng số cont, số kiện đã xếp / tổng, danh sách <b>chưa xếp được</b> (nếu có) và lý do.</li>
+  </ul>
+  <div class="box note"><b>Sửa dữ liệu sau khi đã tính</b>Khi đổi kích thước, số lượng, ràng buộc của kiện, thêm / xoá kiện, đổi loại cont hoặc tuỳ chọn thuật toán, ứng dụng hiện thông báo vàng ở đáy khung 3D: phương án đang hiển thị là của dữ liệu cũ. Bấm <span class="t">⚡ Cập nhật</span> để tính lại theo dữ liệu mới, hoặc <span class="t">Để sau</span> để giữ phương án hiện tại. Đổi màu kiện không cần tính lại.</div>
+  <div class="box warn"><b>Kết quả chỉ mang tính tham khảo</b>Phương án do máy tính toán theo kích thước và ràng buộc đã nhập. Khi đóng hàng thực tế cần kiểm tra lại chèn lót, chằng buộc, phân bổ tải trục xe và quy định của hãng tàu / nhà xe.</div>
+</section>
+
+<section id="xem">
+  <a class="top" href="#">↑ Lên đầu</a>
+  <h2>8. Xem kết quả 3D</h2>
+  <ul>
+    <li><b>Góc nhìn nhanh:</b> <span class="t">3D</span> (nghiêng), <span class="t">Trên</span>, <span class="t">Cạnh</span>, <span class="t">Cửa</span>.</li>
+    <li><b>Vách:</b> bỏ tích để ẩn vỏ container, nhìn rõ kiện bên trong.</li>
+    <li><b>Số bước:</b> tích để hiện số thứ tự xếp trên từng kiện.</li>
+    <li><b>Trình tự xếp:</b> thanh dưới khung 3D — <b>▶</b> phát tự động, <b>◀ / ▶|</b> từng bước, kéo thanh trượt để tới bước bất kỳ, <b>⏭</b> hiện tất cả.</li>
+    <li>Rê chuột lên một kiện: hiện tên, kích thước, vị trí, bước xếp.</li>
+  </ul>
+</section>
+
+<section id="xep-tay">
+  <a class="top" href="#">↑ Lên đầu</a>
+  <h2>9. Xếp tay</h2>
+  <p>Bấm <span class="t">✋ Xếp tay</span> (trên khung 3D). Khung <b>Xếp tay</b> mở bên phải với danh sách loại kiện (còn bao nhiêu / tổng), nút <b>＋ / －</b> để tăng / giảm số lượng loại kiện. Có thể xếp tay từ đầu (cont trống) hoặc chỉnh lại phương án máy đã tính.</p>
+  <div class="box tip"><b>Mẹo</b>Nên dùng góc nhìn <span class="t">Trên</span> khi đặt kiện để dễ canh vị trí.</div>
+
+  <h3 id="dat-kien">Đặt kiện</h3>
+  <ol>
+    <li>Bấm vào 1 loại kiện trong danh sách → con trỏ "cầm" một <b>khối mờ</b>.</li>
+    <li>Rê chuột vào cont: khối mờ <b>xanh</b> = đặt được, <b>đỏ</b> = chưa hợp lệ (vướng kiện khác, thiếu đỡ, quá tải…). Khối tự hút sát vách và cạnh kiện bên cạnh, tự rơi xuống mặt đỡ.</li>
+    <li><b>Click</b> để đặt. Vẫn đang cầm loại kiện đó → click tiếp để đặt kiện sau.</li>
+    <li><span class="k">R</span> để xoay sang hướng khác, <span class="k">Esc</span> để thôi cầm.</li>
+  </ol>
+  <p><b>Khung 📍 Vị trí đặt</b> (hiện khi đang cầm kiện):</p>
+  <ul>
+    <li><b>Hướng đặt:</b> chọn hướng xoay cụ thể.</li>
+    <li><b>X / Y (mm):</b> nhập toạ độ chính xác (X tính từ vách trong cùng ra cửa, Y từ vách trái). <b>Z</b> tự tính.</li>
+    <li>Nút <b>◀ X ▶ ▲ Y ▼</b> hoặc phím mũi tên để nhích, chọn bước 10 / 50 / 100 mm hoặc 1 kiện.</li>
+    <li><span class="t">📍 Gợi ý vị trí</span> (<span class="k">G</span>): nhảy tới chỗ trống hợp lệ sâu nhất, thấp nhất.</li>
+    <li><span class="t">✔ Đặt</span> (<span class="k">Enter</span>).</li>
+    <li><b>Khoá vị trí:</b> khối mờ không chạy theo chuột — dùng khi nhập toạ độ.</li>
+  </ul>
+  <div class="box note"><b>Đặt tạm chỗ chưa hợp lệ</b>Vẫn click để đặt được khi khối đỏ (ví dụ thò ra ngoài cont). Kiện được đánh dấu đỏ và chọn sẵn — bấm <span class="k">R</span> để xoay: kiện tự kéo vào trong cont cho vừa.</div>
+
+  <h3 id="goi-y">Nút <span class="plus">+</span> trên kiện</h3>
+  <ul>
+    <li><b>Nút <span class="plus">+</span> xanh</b> trên từng kiện đã đặt (khi đang cầm kiện hoặc đang dán nhóm): nằm ở <b>mặt trên</b>, <b>phía cửa</b>, <b>bên trái</b>, <b>bên phải</b> — chỉ hiện ở chỗ kiện đang cầm đặt vừa khít. Rê chuột lên nút (chuyển cam) để xem trước, <b>click để đặt sát mặt đó</b>.</li>
+    <li>Bỏ tích <b>Hiện ký hiệu ＋ trên kiện</b> (khung Vị trí đặt) nếu muốn ẩn.</li>
+  </ul>
+
+  <h3 id="sua-kien">Di chuyển, xoay, xoá kiện đã đặt</h3>
+  <ul>
+    <li><b>Click</b> vào kiện để chọn (viền nổi bật, thông tin hiện trong khung Xếp tay).</li>
+    <li><span class="k">M</span>: nhấc kiện để di chuyển, click chỗ mới để đặt (kiện đang bị đè lên thì phải dời kiện phía trên trước).</li>
+    <li><span class="k">R</span>: xoay kiện tại chỗ (tự tìm hướng vừa).</li>
+    <li><span class="k">Delete</span>: xoá kiện khỏi cont (trả về danh sách còn lại).</li>
+    <li><span class="k">Ctrl</span>+<span class="k">Z</span> / <span class="k">Ctrl</span>+<span class="k">Y</span>: hoàn tác / làm lại (cả khi không ở chế độ Xếp tay).</li>
+  </ul>
+
+  <h3 id="nhieu-kien">Chọn nhiều, copy / cắt / dán</h3>
+  <ol>
+    <li>Chọn nhiều kiện: <span class="k">Ctrl</span> / <span class="k">Shift</span> + click từng kiện, <b>giữ <span class="k">Shift</span> + kéo chuột</b> quét vùng, hoặc <span class="t">☑ Chọn hết</span> (<span class="k">Ctrl</span>+<span class="k">A</span>).</li>
+    <li><span class="t">⧉ Copy</span> (<span class="k">Ctrl</span>+<span class="k">C</span>) giữ nguyên chỗ cũ · <span class="t">✂ Cắt</span> (<span class="k">Ctrl</span>+<span class="k">X</span>) nhấc cả nhóm đi.</li>
+    <li><span class="t">📋 Dán</span> (<span class="k">Ctrl</span>+<span class="k">V</span>): rê chuột tới chỗ muốn đặt (hoặc dùng nút <span class="plus">+</span>), click để đặt. <span class="k">R</span> xoay cả nhóm 90°. Sau khi copy có thể click dán liên tục nhiều lần; <span class="k">Esc</span> để thôi.</li>
+    <li><span class="k">Delete</span> xoá cả nhóm đang chọn.</li>
+  </ol>
+  <p>Dán được sang container khác: copy → bấm tab cont khác → dán.</p>
+
+  <h3 id="cont">Thêm / xoá container, các nút khác</h3>
+  <table>
+    <tr><th style="width:26%">Nút</th><th>Tác dụng</th></tr>
+    <tr><td>＋ Cont</td><td>Thêm 1 container trống (chọn loại cont).</td></tr>
+    <tr><td>🗑 Cont · ✕ trên tab</td><td>Xoá container đang xem; kiện trong đó trở về danh sách chưa xếp.</td></tr>
+    <tr><td>Xoá tất cả (trên thanh tab)</td><td>Xoá mọi container.</td></tr>
+    <tr><td>🧹 Dọn</td><td>Bỏ hết kiện trong container đang xem.</td></tr>
+    <tr><td>↻ Trình tự</td><td>Đánh lại thứ tự bước xếp: từ trong ra cửa, từ dưới lên.</td></tr>
+    <tr><td>⚡ Tự xếp phần còn lại</td><td>Giữ nguyên các kiện đã đặt tay, máy tự xếp các kiện còn lại.</td></tr>
+  </table>
+</section>
+
+<section id="xuat">
+  <a class="top" href="#">↑ Lên đầu</a>
+  <h2>10. Xuất PDF, Excel, in</h2>
+  <h3>📄 Xuất PDF</h3>
+  <p>Bấm <span class="t">📄 Xuất PDF</span>, chọn mẫu rồi <span class="t">📄 Tạo PDF</span>:</p>
+  <table>
+    <tr><th style="width:24%">Mẫu</th><th>Nội dung</th></tr>
+    <tr><td><b>Mẫu chuẩn</b><br><span class="muted">A4 dọc</span></td><td>Ô Report / Ref / ngày, các chỉ số thể tích – trọng lượng, bảng kích thước cont, <b>packing list</b>, từng bước xếp với 2 góc nhìn 3D. Nhập <b>Report</b> (tên lô hàng) và <b>Ref</b> (số PO, booking…).</td></tr>
+    <tr><td><b>Mẫu chi tiết</b><br><span class="muted">A4 ngang</span></td><td>Trang tổng hợp, ảnh 3D từng cont (nghiêng, trên, cạnh), bảng trình tự xếp có toạ độ X / Y / Z, <b>cắt lớp theo chiều cao</b> (nhìn từ trên) và <b>theo chiều dài</b> (nhìn từ cửa) — chọn số lớp cắt: tự động, từng tầng, hoặc 4–24 lớp đều.</td></tr>
+  </table>
+  <p>Chọn xuất <b>Tất cả</b> container hoặc <b>Chỉ container đang xem</b>. File PDF tự tải về thư mục Downloads.</p>
+  <div class="box note"><b>Sửa tiếp bằng PDF Editor</b>File PDF xuất ra có <b>chữ thật</b> (phông Arial, tiếng Việt), bảng và khung là nét vẽ — chỉ hình 3D và hình cắt lớp là ảnh. Mở file bằng ứng dụng <b>PDF Editor</b> rồi dùng <span class="t">✎ Sửa nội dung</span> để sửa chữ, số, tên lô hàng; kéo khung để di chuyển / xoá bảng; copy chữ ra Word / Excel được.</div>
+  <h3>📤 Xuất Excel</h3>
+  <p>Xuất kế hoạch xếp hàng: tổng hợp, số kiện từng loại trong từng cont, trình tự và toạ độ từng kiện.</p>
+  <h3>🖨 In</h3>
+  <p>In nhanh báo cáo kế hoạch xếp hàng (tổng hợp + hình + trình tự) ra máy in hoặc "Lưu dưới dạng PDF".</p>
+</section>
+
+<section id="phim-tat">
+  <a class="top" href="#">↑ Lên đầu</a>
+  <h2>11. Phím tắt (chế độ Xếp tay)</h2>
+  <table>
+    <tr><th>Phím</th><th>Tác dụng</th><th>Phím</th><th>Tác dụng</th></tr>
+    <tr><td>Click</td><td>Đặt kiện / chọn kiện</td><td><span class="k">Ctrl</span>+<span class="k">Z</span> / <span class="k">Ctrl</span>+<span class="k">Y</span></td><td>Hoàn tác / Làm lại</td></tr>
+    <tr><td><span class="k">R</span></td><td>Xoay kiện / xoay nhóm khi dán</td><td><span class="k">Ctrl</span>+<span class="k">A</span></td><td>Chọn hết kiện trong cont</td></tr>
+    <tr><td><span class="k">M</span></td><td>Di chuyển kiện đang chọn</td><td><span class="k">Ctrl</span>+<span class="k">C</span></td><td>Copy các kiện đang chọn</td></tr>
+    <tr><td><span class="k">Delete</span></td><td>Xoá kiện / nhóm đang chọn</td><td><span class="k">Ctrl</span>+<span class="k">X</span></td><td>Cắt (nhấc) nhóm kiện</td></tr>
+    <tr><td><span class="k">Esc</span></td><td>Thôi cầm kiện / bỏ chọn</td><td><span class="k">Ctrl</span>+<span class="k">V</span></td><td>Dán nhóm kiện</td></tr>
+    <tr><td><span class="k">Enter</span></td><td>Đặt kiện tại khối mờ</td><td><span class="k">Ctrl</span> / <span class="k">Shift</span> + click</td><td>Thêm / bớt kiện vào vùng chọn</td></tr>
+    <tr><td><span class="k">G</span></td><td>Gợi ý vị trí</td><td><span class="k">Shift</span> + kéo chuột</td><td>Quét chọn nhiều kiện</td></tr>
+    <tr><td>Mũi tên</td><td>Nhích khối mờ theo X / Y</td><td></td><td></td></tr>
+  </table>
+</section>
+
+<section id="luu-y">
+  <a class="top" href="#">↑ Lên đầu</a>
+  <h2>12. Lưu ý &amp; giới hạn</h2>
+  <ul>
+    <li>Kiện được coi là <b>hình hộp chữ nhật</b>; hàng hình dạng đặc biệt nhập theo kích thước bao ngoài.</li>
+    <li>Chưa tính <b>tải trọng trục xe</b>, phân vùng tải sàn, chèn lót, khe hở chằng buộc — hãy chừa dư kích thước nếu cần.</li>
+    <li>Chưa có xếp 2 tầng (hàng lên pallet rồi pallet vào cont) — có thể chọn mẫu <b>Pallet</b> làm "container" để tính riêng từng pallet.</li>
+    <li>Dữ liệu tự lưu trong trình duyệt của từng máy; người khác mở link chia sẻ sẽ thấy dữ liệu riêng của họ, không thấy dự án của bạn — gửi file <code>.json</code> nếu muốn chia sẻ.</li>
+    <li>Cần Internet để tải thư viện 3D, Excel, PDF.</li>
+  </ul>
+</section>
+
+<section id="hoi-dap">
+  <a class="top" href="#">↑ Lên đầu</a>
+  <h2>13. Hỏi đáp nhanh</h2>
+  <h3>Tại sao có kiện "chưa xếp được"?</h3>
+  <p>Do kiện quá khổ so với cont (dòng kiện bị tô đỏ), vượt tải trọng, hết số cont cho phép, hoặc ràng buộc quá chặt (không chồng, chỉ sàn…). Kiểm tra cột Xoay / Chồng, tăng số lượng cont hoặc để trống ô Số lượng.</p>
+  <h3>Click không đặt được kiện?</h3>
+  <p>Kiểm tra đã bật <span class="t">✋ Xếp tay</span> và đã bấm chọn loại kiện (còn số lượng). Khối mờ đỏ vẫn đặt tạm được — sau đó bấm <span class="k">R</span> để xoay cho vừa. Loại kiện đã xếp hết thì bấm <b>＋</b> để tăng số lượng.</p>
+  <h3>Dán từ Excel báo "chưa đọc được dòng nào"?</h3>
+  <p>Kiểm tra bảng có cột Dài, Rộng, Cao (hoặc cột Kích thước dạng <code>1080x870x930</code>) và các ô kích thước là số. Nên copy cả dòng tiêu đề. Nếu vẫn không được, lưu bảng thành file rồi dùng <span class="t">📥 Nhập Excel</span>, hoặc tải <span class="t">📄 File mẫu</span> và chép dữ liệu vào đúng cột.</p>
+  <h3>Trọng tâm báo lệch?</h3>
+  <p>Hàng nặng dồn về một đầu / một bên. Dùng Xếp tay dời bớt kiện nặng về giữa cont, hoặc đổi Ưu tiên.</p>
+  <h3>Lỡ tay xoá / sửa sai?</h3>
+  <p><span class="k">Ctrl</span>+<span class="k">Z</span> (hoàn tác), <span class="k">Ctrl</span>+<span class="k">Y</span> (làm lại).</p>
+  <h3>Ứng dụng không hiện bản mới nhất?</h3>
+  <p>Nhấn <span class="k">Ctrl</span>+<span class="k">F5</span> để tải lại trang.</p>
+  <h3>In hướng dẫn này?</h3>
+  <p>Bấm <span class="t">🖨 In / Lưu PDF</span> ở góc trên, chọn máy in hoặc "Lưu dưới dạng PDF".</p>
+</section>
+</main>
+</div>
+</body>
+</html>

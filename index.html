@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>if (location.pathname === '/load-planner') location.replace('/load-planner/' + location.search + location.hash);</script>
+<title>Load Planner – Xếp hàng Container 3D</title>
+<meta name="description" content="Load Planner by DxH – lập phương án xếp hàng vào container 3D, xuất PDF / Excel.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Load Planner">
+<meta property="og:title" content="Load Planner – Xếp hàng Container 3D">
+<meta property="og:description" content="Load Planner by DxH – lập phương án xếp hàng vào container 3D, xuất PDF / Excel.">
+<meta property="og:url" content="https://desktop-89se9ff.tail325211.ts.net/load-planner/">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">📦 <b>Load Planner</b><b class="by">by DxH</b> <span>Xếp hàng container 3D</span></div>
+  <label class="pname" title="Tên dự án — dùng làm tên file khi Lưu, tiêu đề báo cáo PDF / Excel / In">📁 Dự án <input id="projName" placeholder="Nhập tên dự án…" maxlength="120"></label>
+  <div class="actions">
+    <button id="btnNew" title="Dự án mới">🗋 Mới</button>
+    <button id="btnOpen" title="Mở file dự án .json">📂 Mở</button>
+    <button id="btnSave" title="Lưu dự án ra file .json">💾 Lưu</button>
+    <span class="sep"></span>
+    <button id="btnImport" title="Nhập danh sách kiện từ Excel/CSV">📥 Nhập Excel</button>
+    <button id="btnTemplate" title="Tải file Excel mẫu">📄 File mẫu</button>
+    <button id="btnExport" title="Xuất kế hoạch xếp hàng ra Excel">📤 Xuất Excel</button>
+    <button id="btnPdf" title="Tải file PDF: tổng hợp, hình 3D, trình tự xếp, hình cắt lớp">📄 Xuất PDF</button>
+    <button id="btnPrint" title="In báo cáo kế hoạch xếp hàng">🖨 In</button>
+    <span class="sep"></span>
+    <a href="huong-dan.html" target="_blank" class="help-link" title="Hướng dẫn sử dụng (mở tab mới)">❓ Hướng dẫn</a>
+  </div>
+  <input type="file" id="fileOpen" accept=".json" hidden>
+  <input type="file" id="fileImport" accept=".xlsx,.xls,.csv" hidden>
+</header>
+
+<main class="layout">
+  <!-- ===== Bảng nhập liệu ===== -->
+  <section class="panel left">
+    <div class="card">
+      <div class="card-h"><span>🚚 Phương tiện / Container <small id="fleetSum"></small></span>
+        <button id="btnAddFleet" class="small primary" title="Thêm 1 loại cont / xe vào danh sách">＋ Thêm loại cont</button></div>
+      <div class="table-wrap fleet-wrap">
+        <table id="fleet">
+          <thead><tr><th>#</th><th>Loại cont / xe</th><th>Dài trong</th><th>Rộng trong</th><th>Cao trong</th><th>Tải (kg)</th><th title="Số lượng container loại này. Để trống = tự thêm bao nhiêu cũng được">Số lượng</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="legend-help">Xếp lần lượt theo thứ tự dòng (dòng 1 trước). <b>Số lượng</b> để trống = tự thêm cont loại đó khi còn hàng. Nếu tất cả các dòng đều có số lượng mà vẫn còn hàng thì phần dư báo "chưa xếp được".</div>
+      <details class="opts">
+        <summary>⚙️ Tuỳ chọn thuật toán</summary>
+        <div class="grid-c">
+          <label>Diện tích đỡ tối thiểu (%)<input type="number" id="oSupport" min="10" max="100" value="75"></label>
+          <label>Chiến lược sắp xếp
+            <select id="oStrategy">
+              <option value="auto">Tự động (thử tất cả)</option>
+              <option value="volume">Thể tích lớn trước</option>
+              <option value="base">Đáy lớn trước</option>
+              <option value="height">Cao trước</option>
+              <option value="longest">Cạnh dài trước</option>
+              <option value="weight">Nặng trước</option>
+            </select>
+          </label>
+          <label>Số container tối đa<input type="number" id="oMaxC" min="1" max="200" value="50"></label>
+        </div>
+      </details>
+    </div>
+
+    <div class="card grow">
+      <div class="card-h">
+        <span>📋 Danh sách kiện hàng <small id="itemSum"></small></span>
+        <span>
+          <label class="pal" title="Đổi bộ màu tự gán cho các loại kiện (vẫn chỉnh từng màu bằng ô màu ở cột đầu)">🎨 <select id="palette"></select><span id="palPrev" class="pal-prev"></span></label>
+          <button id="btnPaste" class="small" title="Dán bảng copy từ Excel (Tên, Dài, Rộng, Cao, Kg, SL)">📋 Dán từ Excel</button>
+          <button id="btnAdd" class="small primary">＋ Thêm kiện</button>
+        </span>
+      </div>
+      <div class="table-wrap">
+        <table id="items">
+          <thead>
+            <tr>
+              <th></th><th>Tên / Mã kiện</th><th>Dài</th><th>Rộng</th><th>Cao</th><th>SL</th><th>Kg</th>
+              <th title="Cho phép xoay kiện">Xoay</th>
+              <th title="Cho phép xếp kiện khác lên trên">Chồng</th>
+              <th title="Tải tối đa chịu được bên trên (kg), để trống = không giới hạn">Chịu tải</th>
+              <th title="Chỉ đặt trên sàn">Sàn</th>
+              <th title="Thứ tự xếp: 1 xếp trước (vào sâu bên trong), số lớn xếp sau (gần cửa) — dùng cho nhiều điểm giao">Ưu tiên</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="legend-help">
+        Xoay: <b>Tự do</b> = 6 hướng · <b>Đứng</b> = mặt trên hướng lên (This side up) · <b>Cố định</b> = không xoay ·
+        <b>Đứng / nằm nghiêng</b> = không dựng đứng đầu kiện · <b>Chỉ nằm nghiêng</b> = cạnh Rộng hướng lên · <b>Chỉ dựng đứng</b> = cạnh Dài hướng lên · <b>Dài dọc theo cont</b> = cạnh Dài song song chiều dài cont.
+        Ưu tiên 1 xếp vào trong cùng, số lớn hơn gần cửa (giao trước).
+      </div>
+      <button id="btnRun" class="run">⚡ Tính toán xếp hàng</button>
+    </div>
+  </section>
+
+  <div id="splitter" class="splitter" title="Kéo để chỉnh độ rộng 2 phần · bấm đúp để về mặc định"></div>
+
+  <!-- ===== Kết quả 3D ===== -->
+  <section class="panel right">
+    <div class="viewer-top">
+      <div id="tabs" class="tabs"></div>
+      <div class="views">
+        <button id="btnManual" class="small manual-btn" title="Xếp thủ công: tự đặt / di chuyển / xoay / xoá từng kiện">✋ Xếp tay</button>
+        <button data-view="iso" class="small">3D</button>
+        <button data-view="top" class="small">Trên</button>
+        <button data-view="side" class="small">Cạnh</button>
+        <button data-view="back" class="small">Cửa</button>
+        <label class="chk"><input type="checkbox" id="vWalls" checked> Vách</label>
+        <label class="chk"><input type="checkbox" id="vLabels"> Số bước</label>
+      </div>
+    </div>
+    <div id="viewer">
+      <div id="empty" class="empty">
+        <div>📦</div>
+        <p>Nhập danh sách kiện hàng, chọn container rồi bấm <b>⚡ Tính toán xếp hàng</b>.</p>
+      </div>
+      <div id="stale" class="stale" hidden>
+        <span id="staleMsg"></span>
+        <button id="staleGo" class="small primary" title="Tính lại phương án theo dữ liệu mới">⚡ Cập nhật</button>
+        <button id="staleLater" class="small" title="Ẩn thông báo, giữ phương án hiện tại">Để sau</button>
+      </div>
+      <div id="busy" class="busy" hidden><div class="spin"></div>Đang tính toán…</div>
+      <div id="tip" class="tip" hidden></div>
+      <div id="stats" class="stats" hidden></div>
+      <div id="manual" class="manual" hidden>
+        <div class="m-h"><b>✋ Xếp tay</b> <span id="mCont"></span></div>
+        <div class="m-tools">
+          <button id="mUndo" class="small" title="Hoàn tác (Ctrl+Z)">↶</button>
+          <button id="mRedo" class="small" title="Làm lại (Ctrl+Y)">↷</button>
+          <button id="mAddC" class="small" title="Thêm 1 container trống">＋ Cont</button>
+          <button id="mDelC" class="small" title="Xoá container đang xem">🗑 Cont</button>
+          <button id="mClear" class="small" title="Bỏ hết kiện trong container đang xem">🧹 Dọn</button>
+          <button id="mSeq" class="small" title="Sắp lại trình tự xếp: từ trong ra cửa, từ dưới lên">↻ Trình tự</button>
+        </div>
+        <div class="m-tools m-clipbar">
+          <button id="mSelAll" class="small" title="Chọn hết kiện trong cont đang xem (Ctrl+A)">☑ Chọn hết</button>
+          <button id="mCopy" class="small" title="Copy các kiện đang chọn (Ctrl+C)">⧉ Copy</button>
+          <button id="mCut" class="small" title="Nhấc các kiện đang chọn để đặt chỗ khác (Ctrl+X)">✂ Cắt</button>
+          <button id="mPaste" class="small" title="Dán nhóm kiện đã copy — rê chuột rồi click để đặt (Ctrl+V)">📋 Dán</button>
+        </div>
+        <div class="m-list" id="mList"></div>
+        <div id="mPos" class="m-pos" hidden>
+          <div class="m-pos-h">📍 Vị trí đặt: <b id="mPosName"></b></div>
+          <label class="m-ori">Hướng đặt <select id="mOri"></select></label>
+          <div class="m-xyz">
+            <label>X (mm)<input type="number" id="mX" step="10"></label>
+            <label>Y (mm)<input type="number" id="mY" step="10"></label>
+            <label>Z (tự rơi)<input type="number" id="mZ" readonly tabindex="-1"></label>
+          </div>
+          <div class="m-nudge">
+            <button class="small" data-n="x-" title="Lùi vào trong (phím ←)">◀ X</button>
+            <button class="small" data-n="x+" title="Ra phía cửa (phím →)">X ▶</button>
+            <button class="small" data-n="y-" title="Sang trái (phím ↑)">▲ Y</button>
+            <button class="small" data-n="y+" title="Sang phải (phím ↓)">Y ▼</button>
+            <select id="mStep" title="Bước dịch chuyển">
+              <option value="10">10 mm</option><option value="50" selected>50 mm</option><option value="100">100 mm</option><option value="k">1 kiện</option>
+            </select>
+          </div>
+          <div id="mPosMsg" class="m-pos-msg"></div>
+          <div class="m-pos-btns">
+            <button id="mSuggest" class="small" title="Tìm vị trí trống hợp lệ sâu nhất, thấp nhất (phím G)">📍 Gợi ý vị trí</button>
+            <button id="mPlace" class="small primary" title="Đặt kiện tại khối mờ (Enter)">✔ Đặt (Enter)</button>
+          </div>
+          <label class="m-lock"><input type="checkbox" id="mLock"> Khoá vị trí (khối mờ không chạy theo chuột)</label>
+          <label class="m-lock" title="Hiện nút ＋ trên mặt trên / mặt bên của từng kiện đã đặt — bấm vào để đặt kiện đang cầm ngay sát đó"><input type="checkbox" id="mAncOn" checked> Hiện ký hiệu ＋ trên kiện (bấm để đặt sát kiện đó)</label>
+        </div>
+        <div id="mSel" class="m-sel" hidden></div>
+        <button id="mAuto" class="m-auto" title="Giữ nguyên các kiện đã đặt, máy tự xếp phần còn lại">⚡ Tự xếp phần còn lại</button>
+        <details class="m-help">
+          <summary>❓ Hướng dẫn &amp; phím tắt</summary>
+          Bấm 1 loại kiện → rê chuột vào cont → <b>click</b> để đặt (đặt liên tục được), hoặc nhập <b>X/Y</b>, dùng phím <b>← → ↑ ↓</b>, <b>G</b> gợi ý, <b>Enter</b> đặt.<br>
+          Nút <b style="color:#1e88e5">＋ xanh</b> trên kiện đã đặt = chỗ đặt vừa sát kiện đó → click nút để đặt.<br>
+          <b>R</b> xoay · <b>Esc</b> bỏ cầm · click kiện đã xếp để chọn → <b>M</b> di chuyển, <b>Del</b> xoá · <b>Ctrl+Z</b> hoàn tác.<br>
+          <b>Chọn nhiều:</b> Ctrl/Shift+click từng kiện, <b>Shift + kéo chuột</b> quét vùng, <b>Ctrl+A</b> chọn hết → <b>Ctrl+C</b> copy, <b>Ctrl+X</b> nhấc cả nhóm, <b>Ctrl+V</b> dán (click để đặt, <b>R</b> xoay nhóm, Esc thôi), <b>Del</b> xoá cả nhóm.<br>
+          Kéo chuột để xoay góc nhìn; nên dùng góc nhìn <b>Trên</b> khi đặt kiện.
+        </details>
+      </div>
+    </div>
+    <div class="steps" id="stepBar" hidden>
+      <button id="btnFirst" class="small" title="Về đầu">⏮</button>
+      <button id="btnPrev" class="small" title="Bước trước">◀</button>
+      <button id="btnPlay" class="small" title="Phát trình tự xếp">▶</button>
+      <button id="btnNext" class="small" title="Bước sau">▶|</button>
+      <button id="btnLast" class="small" title="Hiện tất cả">⏭</button>
+      <input type="range" id="step" min="0" value="0">
+      <span id="stepInfo" class="step-info"></span>
+    </div>
+    <div class="bottom">
+      <div id="summary" class="summary"></div>
+      <div id="legend" class="legend"></div>
+    </div>
+  </section>
+</main>
+
+<dialog id="pdfDlg" class="dlg">
+  <form method="dialog">
+    <h3>📄 Xuất file PDF</h3>
+    <div class="dlg-sec">
+      <b>Mẫu báo cáo</b>
+      <label><input type="radio" name="pTpl" value="std" checked> Mẫu chuẩn (A4 dọc: tổng hợp, packing list, từng bước xếp)</label>
+      <label><input type="radio" name="pTpl" value="detail"> Mẫu chi tiết (A4 ngang: 3D, trình tự, cắt lớp)</label>
+    </div>
+    <div class="dlg-sec" id="pStdOpts">
+      <label>Report <input type="text" id="pReport" style="flex:1" placeholder="Tên báo cáo / lô hàng"></label>
+      <label>Ref <input type="text" id="pRef" style="flex:1" placeholder="Số tham chiếu (PO, booking…)"></label>
+    </div>
+    <div class="dlg-sec" id="pDetailOpts">
+      <b>Nội dung</b>
+      <label><input type="checkbox" id="pOverview" checked> Tổng quan 3D từng container (góc nghiêng, trên, cạnh)</label>
+      <label><input type="checkbox" id="pSteps" checked> Bảng trình tự xếp</label>
+      <label><input type="checkbox" id="pLevels" checked> Cắt lớp theo chiều cao (nhìn từ trên xuống)
+        <select id="pLevelMode" title="Số lớp cắt theo chiều cao">
+          <option value="auto">Tự động</option><option value="each">Từng tầng kiện</option>
+          <option value="4">4 lớp đều</option><option value="6">6 lớp đều</option><option value="8">8 lớp đều</option><option value="12">12 lớp đều</option>
+        </select></label>
+      <label><input type="checkbox" id="pSections" checked> Cắt lớp theo chiều dài (nhìn từ cửa vào)
+        <select id="pSecMode" title="Số lớp cắt theo chiều dài">
+          <option value="auto">Tự động</option><option value="each">Từng vách kiện</option>
+          <option value="8">8 lớp đều</option><option value="12">12 lớp đều</option><option value="16">16 lớp đều</option><option value="24">24 lớp đều</option>
+        </select></label>
+      <small>Trang tổng hợp luôn được đưa vào đầu file.</small>
+    </div>
+    <div class="dlg-sec">
+      <b>Container</b>
+      <label><input type="radio" name="pWhich" value="all" checked> Tất cả <span id="pAllN"></span></label>
+      <label><input type="radio" name="pWhich" value="cur"> Chỉ container đang xem <span id="pCurN"></span></label>
+    </div>
+    <div class="dlg-btns">
+      <button type="button" id="pCancel">Huỷ</button>
+      <button type="button" id="pGo" class="primary">📄 Tạo PDF</button>
+    </div>
+  </form>
+</dialog>
+<dialog id="pasteDlg" class="dlg dlg-wide">
+  <h3>📋 Dán danh sách kiện từ Excel</h3>
+  <div class="dlg-sec">
+    <small>Trong Excel: bôi đen bảng (nên gồm cả dòng tiêu đề: Tên, Dài, Rộng, Cao, Kg, SL…) → <b>Ctrl+C</b> → bấm vào ô dưới đây → <b>Ctrl+V</b>.</small>
+    <textarea id="pasteTa" rows="10" placeholder="Bấm vào đây rồi nhấn Ctrl+V…" spellcheck="false"></textarea>
+    <div id="pastePrev" class="paste-prev"></div>
+  </div>
+  <div class="dlg-btns">
+    <button type="button" id="pasteCancel">Huỷ</button>
+    <button type="button" id="pasteGo" class="primary">📥 Nhập vào danh sách</button>
+  </div>
+</dialog>
+<dialog id="impDlg" class="dlg">
+  <h3>📥 Nhập danh sách kiện</h3>
+  <p id="impMsg" style="margin:0 0 14px;font-size:14px;line-height:1.5"></p>
+  <div class="dlg-btns">
+    <button type="button" id="impCancel" title="Bỏ thao tác, không thêm dữ liệu (Esc)">✕ Huỷ</button>
+    <button type="button" id="impReplace" title="Xoá danh sách hiện tại, thay bằng danh sách mới">♻ Thay thế danh sách</button>
+    <button type="button" id="impAppend" class="primary" title="Giữ danh sách hiện tại, thêm các kiện mới vào cuối">＋ Thêm vào cuối</button>
+  </div>
+</dialog>
+<div id="report" class="report"></div>
+<div id="toast" class="toast" hidden></div>
+<script type="module" src="app.js"></script>
+</body>
+</html>
