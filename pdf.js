@@ -7,14 +7,17 @@ const PAGE_W = 1123, PAGE_H = 794; // A4 ngang @96dpi
 
 /* ================= HTML → PDF vector ================= */
 const FONT_FILES = { normal: 'arial', bold: 'arialbd', italic: 'ariali', bolditalic: 'arialbi' };
+const ARIMO = { normal: 'arimo-400', bold: 'arimo-700', italic: 'arimo-400i', bolditalic: 'arimo-700i' };
 let fontData = null; // cache base64 các phông giữa các lần xuất
 async function loadFonts() {
   if (fontData) return fontData;
   const b64 = buf => { const u = new Uint8Array(buf); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
   const out = {};
   await Promise.all(Object.entries(FONT_FILES).map(async ([st, f]) => {
-    const r = await fetch(`fonts/${f}.ttf`);
-    if (!r.ok) throw new Error('Không tải được phông chữ ' + f + '.ttf từ máy chủ');
+    // Arial của Windows (qua server.js ở máy); trang web tĩnh (GitHub Pages) không có → dùng Arimo đi kèm (cùng kích thước chữ với Arial)
+    let r = await fetch(`fonts/${f}.ttf`).catch(() => null);
+    if (!r || !r.ok) r = await fetch(`fonts/${ARIMO[st]}.ttf`);
+    if (!r.ok) throw new Error('Không tải được phông chữ ' + f + '.ttf');
     out[st] = b64(await r.arrayBuffer());
   }));
   return (fontData = out);
