@@ -238,3 +238,20 @@ body.splitting #viewer { pointer-events: none; }
 #pasteTa { width: 100%; box-sizing: border-box; font: 12px/1.4 Consolas, monospace; padding: 8px; border: 1px solid var(--line); border-radius: 8px; resize: vertical; white-space: pre; overflow: auto; }
 #pasteTa:focus { outline: none; border-color: #1a73e8; }
 .paste-prev { font-size: 13px; min-height: 18px; }
+
+/* Gợi ý & cảnh báo */
+.tips { margin-top: 8px; border: 1px solid #e3e7ee; border-radius: 8px; padding: 4px 8px 6px; background: #fbfcfe; }
+.tips summary { cursor: pointer; font-weight: 700; padding: 2px 0; }
+.tips summary small { font-weight: 400; color: var(--muted); margin-left: 4px; }
+.tips .tip { margin-top: 4px; padding: 4px 6px; border-radius: 5px; line-height: 1.4; }
+.tips .tip.warn { background: #fff4e5; color: #8a4b00; }
+.tips .tip.tip { background: #eef6ff; color: #1d4f86; }
+.tips .tip.info { background: #f3efe9; color: #5d4630; }
+.tips .tip.ok { color: var(--ok); font-weight: 600; }
+.tips .tip[data-goc] { cursor: pointer; }
+.tips .tip[data-goc]:hover { outline: 1px solid #b9c7da; }
+.bottom { max-height: 32vh; }
+#palBox.on summary { color: #8a5a1f; font-weight: 600; }
+.pal-state { font-weight: 400; font-size: 11px; }
+.opts .chk { display: flex; align-items: center; gap: 6px; font-size: 12px; margin: 4px 0; }
+.pal-grid { margin: 4px 0; }

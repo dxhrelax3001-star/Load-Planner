@@ -85,6 +85,8 @@
   <a class="sub" href="#excel">Nhập từ Excel</a>
   <a class="sub" href="#mau">Màu kiện</a>
   <a href="#tinh">7. Tính toán tự động</a>
+  <a class="sub" href="#pallet">Xếp lên pallet trước</a>
+  <a class="sub" href="#canh-bao">Gợi ý &amp; cảnh báo</a>
   <a href="#xem">8. Xem kết quả 3D</a>
   <a href="#xep-tay">9. Xếp tay</a>
   <a class="sub" href="#dat-kien">Đặt kiện</a>
@@ -276,8 +278,38 @@
   <ul>
     <li>Tab từng container với số kiện.</li>
     <li>Bảng số liệu: số kiện, thể tích sử dụng (m³ và %), tải trọng (kg và %), chiều dài sử dụng, <b>trọng tâm</b> (cảnh báo khi lệch nhiều khỏi giữa cont).</li>
-    <li>Dưới cùng: tổng số cont, số kiện đã xếp / tổng, danh sách <b>chưa xếp được</b> (nếu có) và lý do.</li>
+    <li>Dưới cùng: tổng số cont, số kiện đã xếp / tổng, danh sách <b>chưa xếp được</b> (nếu có) và khung <b>💡 Gợi ý &amp; cảnh báo</b>.</li>
   </ul>
+
+  <h3 id="pallet">🧱 Xếp lên pallet trước, rồi xếp pallet vào cont</h3>
+  <p>Mở mục <b>🧱 Xếp lên pallet trước</b> (dưới bảng container), tích <b>Gom kiện lên pallet rồi mới xếp pallet vào cont</b>, nhập thông số pallet rồi bấm <span class="t run">⚡ Tính toán xếp hàng</span>. Máy làm 2 bước:</p>
+  <ol>
+    <li><b>Gom kiện lên pallet:</b> xếp kiện lên từng pallet, mỗi pallet không cao quá <b>Cao tối đa cả pallet</b> (tính cả tấm pallet) và không nặng quá <b>Tải tối đa / pallet</b>.</li>
+    <li><b>Xếp pallet vào cont:</b> mỗi pallet coi như 1 khối, được xoay ngang 90° khi cần. Kiện quá khổ / quá nặng so với pallet được <b>xếp rời</b> vào cont cùng lúc.</li>
+  </ol>
+  <table>
+    <tr><th>Thông số</th><th>Ý nghĩa</th></tr>
+    <tr><td>Pallet dài / rộng</td><td>Kích thước mặt pallet (mặc định 1200 × 1000 mm). Kiện không được thò ra ngoài mặt pallet.</td></tr>
+    <tr><td>Dày pallet, Nặng pallet</td><td>Chiều cao và cân nặng của riêng tấm pallet (mặc định 150 mm, 25 kg) — được cộng vào chiều cao và tải của cont.</td></tr>
+    <tr><td>Cao tối đa cả pallet</td><td>Chiều cao tối đa từ đáy pallet tới đỉnh hàng (mặc định 1800 mm).</td></tr>
+    <tr><td>Tải tối đa / pallet</td><td>Tổng cân nặng hàng trên 1 pallet. Để trống = không giới hạn.</td></tr>
+    <tr><td>Cho chồng pallet</td><td>Cho đặt pallet / kiện rời lên trên pallet khác, chỉ khi mọi kiện trên pallet bên dưới đều cho xếp chồng.</td></tr>
+  </table>
+  <p>Trong 3D, tấm pallet hiện màu nâu, hàng xếp bên trên. Bảng packing list và file PDF / Excel có thêm dòng <b>Pallet</b> với số pallet đã dùng. Xếp tay vẫn chỉnh được từng kiện như bình thường.</p>
+
+  <h3 id="canh-bao">💡 Gợi ý &amp; cảnh báo</h3>
+  <p>Sau mỗi lần tính (và sau mỗi lần xếp tay), khung <b>💡 Gợi ý &amp; cảnh báo</b> ở dưới khung 3D tự kiểm tra phương án. Bấm vào một dòng có ghi <b>Cont #…</b> để chuyển sang xem container đó.</p>
+  <table>
+    <tr><th>Loại</th><th>Khi nào hiện</th></tr>
+    <tr><td>⚠ Trọng tâm lệch</td><td>Trọng tâm lệch quá 15% theo chiều dài hoặc 10% theo chiều rộng — nên dàn kiện nặng về giữa.</td></tr>
+    <tr><td>⚠ Kiện nặng đè kiện nhẹ</td><td>Kiện nằm trên nặng hơn kiện bên dưới từ 1,5 lần trở lên — chọn chiến lược <b>Nặng trước</b> hoặc nhập <b>Chịu tải</b> cho kiện nhẹ.</td></tr>
+    <tr><td>⚠ Sát tải trọng</td><td>Cont đã dùng trên 95% tải trọng cho phép.</td></tr>
+    <tr><td>⚠ Kiện chưa xếp</td><td>Nêu lý do: quá khổ, quá nặng, hết số cont khai báo, đạt số cont tối đa, hoặc vướng ràng buộc.</td></tr>
+    <tr><td>💡 Còn chỗ trống</td><td>Phần cuối cont còn trống — ước tính có thể thêm khoảng bao nhiêu kiện mỗi loại (theo cả kích thước và tải trọng còn lại).</td></tr>
+    <tr><td>💡 Cont cuối ít hàng</td><td>Cont cuối đầy dưới 50% — gợi ý loại cont nhỏ hơn chứa vừa phần hàng đó.</td></tr>
+    <tr><td>💡 Kiện cấm chồng lãng phí</td><td>Nhiều kiện không cho xếp chồng đặt sàn, phía trên bỏ trống nhiều.</td></tr>
+    <tr><td>💡 Pallet</td><td>Số pallet, chiều cao / cân nặng; báo khi phía trên pallet còn trống nhiều hoặc pallet quá thấp.</td></tr>
+  </table>
   <div class="box note"><b>Sửa dữ liệu sau khi đã tính</b>Khi đổi kích thước, số lượng, ràng buộc của kiện, thêm / xoá kiện, đổi loại cont hoặc tuỳ chọn thuật toán, ứng dụng hiện thông báo vàng ở đáy khung 3D: phương án đang hiển thị là của dữ liệu cũ. Bấm <span class="t">⚡ Cập nhật</span> để tính lại theo dữ liệu mới, hoặc <span class="t">Để sau</span> để giữ phương án hiện tại. Đổi màu kiện không cần tính lại.</div>
   <div class="box warn"><b>Kết quả chỉ mang tính tham khảo</b>Phương án do máy tính toán theo kích thước và ràng buộc đã nhập. Khi đóng hàng thực tế cần kiểm tra lại chèn lót, chằng buộc, phân bổ tải trục xe và quy định của hãng tàu / nhà xe.</div>
 </section>
@@ -394,7 +426,7 @@
   <ul>
     <li>Kiện được coi là <b>hình hộp chữ nhật</b>; hàng hình dạng đặc biệt nhập theo kích thước bao ngoài.</li>
     <li>Chưa tính <b>tải trọng trục xe</b>, phân vùng tải sàn, chèn lót, khe hở chằng buộc — hãy chừa dư kích thước nếu cần.</li>
-    <li>Chưa có xếp 2 tầng (hàng lên pallet rồi pallet vào cont) — có thể chọn mẫu <b>Pallet</b> làm "container" để tính riêng từng pallet.</li>
+    <li>Xếp pallet: kiện không được thò ra ngoài mặt pallet; khi cho chồng pallet, máy coi mặt trên mỗi pallet là phẳng — hãy kiểm tra lại độ phẳng thực tế.</li>
     <li>Dữ liệu tự lưu trong trình duyệt của từng máy; người khác mở link chia sẻ sẽ thấy dữ liệu riêng của họ, không thấy dự án của bạn — gửi file <code>.json</code> nếu muốn chia sẻ.</li>
     <li>Cần Internet để tải thư viện 3D, Excel, PDF.</li>
   </ul>

@@ -154,6 +154,15 @@ function initContainer() {
   $('#oSupport').oninput = e => { o.support = +e.target.value; save(); markStale('tuỳ chọn'); };
   $('#oStrategy').onchange = e => { o.strategy = e.target.value; save(); markStale('tuỳ chọn'); };
   $('#oMaxC').oninput = e => { o.maxC = +e.target.value; save(); markStale('tuỳ chọn'); };
+  // Pallet: gom kiện lên pallet rồi xếp pallet vào cont
+  o.pallet = { on: false, l: 1200, w: 1000, h: 150, weight: 25, maxH: 1800, kg: 1000, stack: false, ...(o.pallet || {}) };
+  const P = o.pallet, PF = { pL: 'l', pW: 'w', pH: 'h', pKgSelf: 'weight', pMaxH: 'maxH', pKg: 'kg' };
+  const palState = () => { $('#palState').textContent = P.on ? `· BẬT ${P.l}×${P.w}, cao ≤ ${P.maxH}` : '· tắt'; $('#palBox').classList.toggle('on', !!P.on); };
+  $('#pOn').checked = !!P.on; $('#pStack').checked = !!P.stack;
+  for (const [id, k] of Object.entries(PF)) { $('#' + id).value = P[k] || ''; $('#' + id).oninput = e => { P[k] = +e.target.value || 0; save(); palState(); if (P.on) markStale('pallet'); }; }
+  $('#pOn').onchange = e => { P.on = e.target.checked; save(); palState(); markStale('pallet'); };
+  $('#pStack').onchange = e => { P.stack = e.target.checked; save(); if (P.on) markStale('pallet'); };
+  palState();
   // Tên dự án (ô trên thanh trên cùng)
   $('#projName').value = project.name || '';
   $('#projName').oninput = e => { project.name = e.target.value; save(); document.title = (project.name ? project.name + ' – ' : '') + 'Load Planner'; };
@@ -225,7 +234,7 @@ $('#palette').onchange = e => {
   project.palette = e.target.value;
   syncPalette();
   project.items.forEach((it, i) => { it.color = COLORS[i % COLORS.length]; });
-  if (result) result.items.forEach((it, i) => { it.color = COLORS[i % COLORS.length]; });
+  if (result) result.items.forEach((it, i) => { if (!it.pallet) it.color = COLORS[i % COLORS.length]; });
   save(); renderItems();
   if (result) { buildScene(); renderLegend(); if (manual.on) renderManual(); savePlan(); }
   toast(`🎨 Đã đổi bảng màu: ${PALETTES[project.palette].name}`);
@@ -470,7 +479,7 @@ function runPlan(fixed) {
     if (!e.data.ok) { console.error(e.data.error); toast('Lỗi tính toán: ' + e.data.error.split('\n')[0], 5000); return done({ ok: false, error: e.data.error.split('\n')[0] }); }
     if (fixed) pushUndo();
     else { manual.undo = []; manual.redo = []; manualDirty = false; }
-    result = wrapResult({ ...e.data, items, base: cinfo, ms: performance.now() - t0 });
+    result = wrapResult({ ...e.data, items: e.data.extraItems?.length ? items.concat(e.data.extraItems) : items, base: cinfo, ms: performance.now() - t0 });
     if (!fixed) current = 0;
     current = Math.min(current, result.containers.length - 1);
     manual.sel = -1; cancelPick(false);
@@ -480,7 +489,8 @@ function runPlan(fixed) {
   };
   worker.onerror = e => { $('#busy').hidden = true; $('#btnRun').disabled = false; toast('Lỗi: ' + e.message, 5000); done({ ok: false, error: e.message }); };
   worker.postMessage({ items, fleet,
-    opt: { minSupport: (project.opt.support || 75) / 100, strategy: project.opt.strategy, maxContainers: project.opt.maxC || 50 },
+    opt: { minSupport: (project.opt.support || 75) / 100, strategy: project.opt.strategy, maxContainers: project.opt.maxC || 50,
+      pallet: !fixed && project.opt.pallet?.on && +project.opt.pallet.l > 0 && +project.opt.pallet.w > 0 ? project.opt.pallet : null },
     fixed: fixed ? result.containers.map(c => ({ spec: specOf(c), boxes: c.boxes.map(b => ({ x: b.x, y: b.y, z: b.z, l: b.l, w: b.w, h: b.h, t: b.t, step: b.step })) })) : [] });
   return promise;
 }
@@ -544,10 +554,122 @@ function showResult() {
     <div><span class="big">${R.containers.length}</span> container: ${esc(mixText(R))}</div>
     <div>Đã xếp <b>${fmt(placed)}</b> / ${fmt(R.totalUnits)} kiện · ${fmt(totalVol, 2)} m³ · ${fmt(R.ms / 1000, 1)} s · chiến lược: ${esc(R.strategy || '-')}</div>
     ${unpl.length ? `<div class="alert">⚠ Chưa xếp được ${fmt(unpl.reduce((s, [, n]) => s + n, 0))} kiện:<br>${unpl.map(([t, n]) => `• ${esc(R.items[t].name)}: ${n}`).join('<br>')}<br><small>Do kiện quá khổ, vượt tải trọng, hoặc đã đạt số container tối đa.</small></div>` : '<div class="good">✔ Đã xếp hết toàn bộ kiện hàng.</div>'}`;
+  $('#summary').insertAdjacentHTML('beforeend', tipsHtml());
   renderLegend();
   buildScene();
   if (manual.on) renderManual();
 }
+
+/* ================== Gợi ý & cảnh báo sau khi xếp ================== */
+/** Phân tích phương án: trọng tâm, kiện nặng đè kiện nhẹ, chỗ trống còn lại, cont cuối ít hàng, kiện chưa xếp… */
+function analyzePlan(R = result) {
+  const tips = [], items = R.items, W = t => +items[t]?.weight || 0;
+  const add = (lvl, html, c = null) => tips.push({ lvl, html, c });
+  const name = t => `"${esc(items[t]?.name)}"`;
+  // Pallet
+  if (R.palInfo?.length) {
+    const hs = R.palInfo.map(p => p.h), ks = R.palInfo.map(p => p.kg);
+    add('info', `🧱 Đã gom thành <b>${R.palInfo.length} pallet</b> · cao ${fmt(Math.min(...hs))}–${fmt(Math.max(...hs))} mm · nặng ${fmt(Math.min(...ks))}–${fmt(Math.max(...ks))} kg`
+      + (R.looseCount ? ` · <b>${R.looseCount}</b> kiện không vừa pallet được xếp rời` : ''));
+    const P = project.opt.pallet || {}, low = R.palInfo.filter(p => p.h - P.h < (P.maxH - P.h) * 0.5);
+    if (low.length && R.palInfo.length > 1) add('tip', `${low.length} pallet cao chưa tới nửa mức cho phép (vd pallet #${low[0].no} cao ${fmt(low[0].h)} mm) — có thể tăng <b>Cao tối đa cả pallet</b> hoặc bật <b>Cho chồng pallet</b> để đỡ tốn chỗ.`);
+  }
+  R.containers.forEach((c, i) => {
+    if (!c.boxes.length) return;
+    const C = specOf(c), st = contStats(c), tag = `Cont #${i + 1}`;
+    // 1. Trọng tâm
+    if (st.cog) {
+      const px = st.cog.x / C.l * 100, py = st.cog.y / C.w * 100;
+      if (Math.abs(px - 50) > 15) add('warn', `${tag}: trọng tâm lệch về <b>${px < 50 ? 'phía vách trong' : 'phía cửa'}</b> (${fmt(px)}% chiều dài) — nên dàn kiện nặng về giữa cont để xe không bị lệch trục.`, i);
+      if (Math.abs(py - 50) > 10) add('warn', `${tag}: trọng tâm lệch sang <b>${py < 50 ? 'bên trái' : 'bên phải'}</b> (${fmt(py)}% chiều rộng) — đổi chỗ bớt kiện nặng sang bên kia.`, i);
+    }
+    // 2. Tải trọng sát giới hạn
+    if (st.kgPct > 95) add('warn', `${tag}: đã dùng ${fmt(st.kgPct, 1)}% tải trọng — sát mức tối đa, kiểm tra lại cân nặng thực tế.`, i);
+    // 3. Kiện nặng nằm trên kiện nhẹ
+    const pairs = [];
+    for (const b of c.boxes) {
+      if (b.z < 1 || items[b.t]?.pallet) continue;
+      for (const o of c.boxes) {
+        if (o === b || items[o.t]?.pallet || Math.abs(o.z + o.h - b.z) > 1 || !overlapXY(o, b)) continue;
+        if (W(b.t) > W(o.t) * 1.5 && W(b.t) - W(o.t) >= 5) { pairs.push([b.t, o.t]); break; }
+      }
+    }
+    if (pairs.length) {
+      const [a, o] = pairs[0];
+      add('warn', `${tag}: <b>${pairs.length}</b> kiện nặng nằm trên kiện nhẹ hơn (vd ${name(a)} ${fmt(W(a), 1)} kg trên ${name(o)} ${fmt(W(o), 1)} kg) — nên chọn chiến lược <b>Nặng trước</b>, hoặc nhập <b>Chịu tải</b> cho kiện nhẹ để không bị đè.`, i);
+    }
+    // 4. Kiện cấm chồng đặt sàn → phía trên bỏ trống
+    const waste = c.boxes.filter(b => b.z < 1 && items[b.t] && !items[b.t].stackable && !items[b.t].pallet && C.h - b.h > 600);
+    if (waste.length >= 3) {
+      const v = waste.reduce((s, b) => s + b.l * b.w * (C.h - b.h), 0) / 1e9;
+      add('tip', `${tag}: ${waste.length} kiện <b>không cho xếp chồng</b> đặt trên sàn, phía trên bỏ trống ~${fmt(v, 1)} m³ — nếu được, cho xếp chồng có giới hạn (cột <b>Chịu tải</b>) để tiết kiệm chỗ.`, i);
+    }
+    // 4b. Pallet không chồng → phía trên pallet bỏ trống
+    if (R.palInfo?.length && !project.opt.pallet?.stack) {
+      const pb = c.boxes.filter(b => items[b.t]?.pallet && b.z < 1 && b.pal);
+      const gaps = pb.map(b => C.h - (R.palInfo[b.pal - 1]?.h || C.h)).filter(g => g > 500);
+      if (gaps.length >= 2) {
+        const v = pb.reduce((s, b) => s + b.l * b.w * Math.max(0, C.h - (R.palInfo[b.pal - 1]?.h || C.h)), 0) / 1e9;
+        add('tip', `${tag}: phía trên ${gaps.length} pallet còn trống ${fmt(Math.min(...gaps))}–${fmt(Math.max(...gaps))} mm (~${fmt(v, 1)} m³) — bật <b>Cho chồng pallet</b>, hoặc tăng <b>Cao tối đa cả pallet</b> lên gần ${fmt(C.h - 50)} mm.`, i);
+      }
+    }
+    // 5. Chỗ trống cuối cont → có thể thêm bao nhiêu kiện
+    const freeL = C.l - st.len;
+    if (freeL >= 300 && st.volPct < 92) {
+      const kgLeft = (C.maxWeight || Infinity) - st.kg;
+      const vOf = t => items[t].l * items[t].w * items[t].h;
+      const fit = items.map((it, t) => {
+        if (it.pallet || !it.qty) return { t, n: 0 };
+        let n = 0;
+        for (const [l, w, h] of orientations(it)) n = Math.max(n, Math.floor(freeL / l) * Math.floor(C.w / w) * Math.floor(C.h / h));
+        if (it.weight > 0) n = Math.min(n, Math.floor(kgLeft / it.weight));
+        return { t, n };
+      }).filter(f => f.n > 0).sort((a, b) => b.n * vOf(b.t) - a.n * vOf(a.t));
+      add('tip', `${tag}: còn trống <b>${fmt(freeL)} mm</b> cuối cont (~${fmt(freeL * C.w * C.h / 1e9, 1)} m³)`
+        + (fit.length ? ` — có thể thêm khoảng ${fit.slice(0, 2).map(f => `<b>${fmt(f.n)}</b> kiện ${name(f.t)}`).join(' hoặc ')}.` : '.'), i);
+    }
+  });
+  // 6. Cont cuối ít hàng → đổi loại nhỏ hơn
+  const n = R.containers.length, last = R.containers[n - 1];
+  if (n > 1 && last?.boxes.length) {
+    const st = contStats(last), C = specOf(last);
+    if (st.volPct < 50) {
+      const types = [...new Set(last.boxes.map(b => b.t))];
+      const kind = id => /rf$/.test(id || '') ? 'lanh' : /^(20|40|45)/.test(id || '') ? 'cont' :/^(tr|semi)/.test(id || '') ? 'xe' : 'khac';
+      const smaller = PRESETS.filter(p => p.l && kind(p.id) !== 'khac' && kind(p.id) === kind(C.preset) && p.l * p.w * p.h < C.l * C.w * C.h
+        && p.l * p.w * p.h * 0.85 >= st.vol * 1e9 && p.kg >= st.kg && types.every(t => fitsAny(items[t], p)))
+        .sort((a, b) => a.l * a.w * a.h - b.l * b.w * b.h)[0];
+      add('tip', `Cont cuối (#${n}) chỉ đầy <b>${fmt(st.volPct, 0)}%</b> thể tích`
+        + (smaller ? ` — thử thêm dòng <b>${esc(smaller.name)}</b> số lượng 1 ở cuối bảng cont, và đặt số lượng dòng trên = ${n - 1}.` : ' — cân nhắc bớt hàng hoặc gửi phần này lô sau.'), n - 1);
+    }
+  }
+  // 7. Kiện chưa xếp được → lý do
+  const fl = project.fleet || [project.container];
+  for (const [t, k] of Object.entries(R.unplaced || {})) {
+    const it = items[t]; if (!it || it.pallet) continue;
+    let why;
+    if (!fl.some(C => fitsAny(it, C))) why = 'quá khổ so với cont với các hướng xoay cho phép — thử nới cột <b>Xoay</b>';
+    else if (fl.every(C => +C.kg && it.weight > +C.kg)) why = 'nặng hơn tải trọng cont';
+    else if (R.containers.length >= (project.opt.maxC || 50)) why = `đã đạt <b>Số container tối đa</b> (${project.opt.maxC || 50}) — tăng giới hạn này`;
+    else if (fl.every(r => r.qty > 0)) why = 'đã hết số lượng cont khai báo — để trống ô <b>Số lượng</b> của 1 dòng cont để tự thêm cont';
+    else why = 'vướng ràng buộc xếp chồng / chỉ đặt sàn / ưu tiên';
+    add('warn', `${fmt(k)} kiện ${name(t)} chưa xếp: ${why}.`);
+  }
+  if (!tips.some(x => x.lvl === 'warn')) add('ok', '✔ Không thấy vấn đề lớn: trọng tâm cân, không có kiện nặng đè kiện nhẹ.');
+  return tips;
+}
+function tipsHtml() {
+  if (!result) return '';
+  const tips = analyzePlan(), nw = tips.filter(t => t.lvl === 'warn').length, nt = tips.filter(t => t.lvl === 'tip').length;
+  const ic = { warn: '⚠', tip: '💡', info: '', ok: '' };
+  return `<details class="tips" ${nw || nt ? 'open' : ''}><summary>💡 Gợi ý & cảnh báo <small>${nw ? `${nw} cảnh báo` : ''}${nw && nt ? ' · ' : ''}${nt ? `${nt} mẹo` : ''}</small></summary>`
+    + tips.map(t => `<div class="tip ${t.lvl}" ${t.c != null ? `data-goc="${t.c}" title="Bấm để xem container #${t.c + 1}"` : ''}>${ic[t.lvl] ? ic[t.lvl] + ' ' : ''}${t.html}</div>`).join('') + '</details>';
+}
+$('#summary').addEventListener('click', e => {
+  const d = e.target.closest('[data-goc]'); if (!d || !result) return;
+  const i = +d.dataset.goc; if (i === current || !result.containers[i]) return;
+  current = i; manual.sel = -1; cancelPick(true, true); showResult();
+});
 
 function renderLegend() {
   if (!result) return;
@@ -952,7 +1074,8 @@ function refresh() {
     // Đánh dấu kiện đặt tạm sai vị trí (vượt cont, chồng lấn, thiếu đỡ, quá tải kiện dưới)
     c.boxes.forEach((b, i) => {
       const others = wb.filter((_, j) => j !== i);
-      b.bad = canPlace(b, { ...result.items[b.t], weight: 0 }, others, specOf(c), minSup()) || null;
+      const it = result.items[b.t];
+      b.bad = (it?.pallet && b.z > 1 ? canPlace(b, { ...it, weight: 0 }, others, specOf(c), 0) : canPlace(b, { ...it, weight: 0 }, others, specOf(c), minSup())) || null;
     });
   });
   buildScene.keepView = true; showResult(); buildScene.keepView = false;
@@ -960,8 +1083,8 @@ function refresh() {
 function afterEdit() { manualDirty = true; refresh(); savePlan(); if (!manual.pick && manual.sugCtx) clearSugs(); }
 /** Lưu phương án xếp hiện tại vào dự án (trình duyệt + file .json khi bấm Lưu) */
 function savePlan() {
-  project.plan = result ? { strategy: result.strategy, containers: result.containers.map(c => ({ spec: { ...specOf(c), maxWeight: null }, boxes: c.boxes.map(({ x, y, z, l, w, h, t, step }) => ({ x, y, z, l, w, h, t, step })) })),
-    items: result.items, base: { ...result.base, maxWeight: null }, manualDirty } : null;
+  project.plan = result ? { strategy: result.strategy, containers: result.containers.map(c => ({ spec: { ...specOf(c), maxWeight: null }, boxes: c.boxes.map(({ x, y, z, l, w, h, t, step, pal }) => ({ x, y, z, l, w, h, t, step, ...(pal ? { pal } : {}) })) })),
+    items: result.items, palInfo: result.palInfo || null, looseCount: result.looseCount ?? null, base: { ...result.base, maxWeight: null }, manualDirty } : null;
   save();
 }
 

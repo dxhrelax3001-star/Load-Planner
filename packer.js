@@ -263,6 +263,32 @@ export function plan(items, fleet, opt = {}, fixed = []) {
   return { strategy: [...new Set(used)].join(', '), containers, unplaced: remaining, container: rows[0].spec, totalUnits: expand(items).length };
 }
 
+/**
+ * Gom kiện lên pallet (giai đoạn 1 của "xếp pallet rồi vào cont").
+ * P = { l, w, h (dày pallet), weight (kg pallet), maxH (cao tối đa cả pallet), kg (tải tối đa trên pallet) }
+ * Trả về { pallets: [boxes đã xếp trên từng pallet (toạ độ trên mặt pallet)], loose: [kiện không vừa pallet → xếp rời] }
+ */
+export function palletize(items, P, opt = {}) {
+  const o = { minSupport: 0.75, ...opt };
+  const spec = { l: +P.l, w: +P.w, h: Math.max(1, +P.maxH - +P.h), maxWeight: +P.kg > 0 ? +P.kg : Infinity };
+  const fits = u => u.weight <= spec.maxWeight && orientations(u).some(([l, w, h]) => l <= spec.l + EPS && w <= spec.w + EPS && h <= spec.h + EPS);
+  const loose = [];
+  let rem = expand(items).filter(u => fits(u) || (loose.push(u), false));
+  const volOf = r => r.boxes.reduce((t, b) => t + b.l * b.w * b.h, 0);
+  const pallets = [];
+  while (rem.length && pallets.length < 2000) {
+    let best = null;
+    for (const name of Object.keys(STRATEGIES)) {
+      const r = packOne(sortUnits(rem, STRATEGIES[name]), spec, o, []);
+      if (!best || volOf(r) > volOf(best)) best = r;
+    }
+    if (!best.boxes.length) { loose.push(...rem); break; }
+    pallets.push(best.boxes);
+    rem = best.left;
+  }
+  return { pallets, loose };
+}
+
 /** Thống kê cho 1 container */
 export function stats(c, C) {
   const vol = c.boxes.reduce((t, b) => t + b.l * b.w * b.h, 0);
