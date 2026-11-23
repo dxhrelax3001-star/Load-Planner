@@ -342,11 +342,16 @@ async function exportStdPdf(ctx, opts, progress) {
       <tr class="u"><td></td><td></td><td>(mm)</td><td>(mm)</td><td>(mm)</td><td></td></tr></table>`;
 
     // Bước xếp = nhóm theo loại kiện + hướng đặt, theo thứ tự xuất hiện trong trình tự xếp
-    const groups = [], idx = new Map();
+    // Chế độ pallet: cả pallet (tấm pallet + hàng trên nó) là 1 lần đưa vào cont → gom theo hướng đặt pallet
+    const groups = [], idx = new Map(), palBase = new Map();
+    for (const b of c.boxes) if (b.pal && R.items[b.t]?.pallet) palBase.set(b.pal, b);
     for (const b of c.boxes) {
-      const k = `${b.t}|${b.l}|${b.w}|${b.h}`;
-      if (!idx.has(k)) { idx.set(k, groups.length); groups.push({ t: b.t, l: b.l, w: b.w, h: b.h, boxes: [] }); }
-      groups[idx.get(k)].boxes.push(b);
+      const pb = b.pal ? palBase.get(b.pal) : null;
+      const k = pb ? `pal|${pb.l}|${pb.w}` : `${b.t}|${b.l}|${b.w}|${b.h}`;
+      if (!idx.has(k)) { idx.set(k, groups.length); groups.push(pb ? { t: pb.t, l: pb.l, w: pb.w, h: pb.h, boxes: [], pallet: true, pals: new Set() } : { t: b.t, l: b.l, w: b.w, h: b.h, boxes: [] }); }
+      const G = groups[idx.get(k)];
+      G.boxes.push(b);
+      if (pb) G.pals.add(b.pal);
     }
     const blocks = [];
     const before = new Set();
@@ -354,6 +359,23 @@ async function exportStdPdf(ctx, opts, progress) {
       progress(`Đang vẽ bước xếp ${g + 1}/${groups.length} — container #${i + 1}…`);
       const G = groups[g], it = R.items[G.t];
       const v = ctx.stepViews(i, new Set(G.boxes), before);
+      if (G.pallet) {
+        const bases = G.boxes.filter(b => R.items[b.t]?.pallet), goods = G.boxes.filter(b => !R.items[b.t]?.pallet);
+        const wg = G.boxes.reduce((s2, b) => s2 + (+R.items[b.t]?.weight || 0), 0);
+        const top = Math.max(...bases.map(pb => G.boxes.filter(b => b.pal === pb.pal).reduce((m, b) => Math.max(m, b.z + b.h), 0) - pb.z));
+        const zs = [...new Set(bases.map(b => Math.round(b.z)))].sort((a, b) => a - b);
+        const nos = [...G.pals].sort((a, b) => a - b);
+        blocks.push(`<div class="blk">
+        <div class="bt"><small>[${g + 1}]</small>${esc(it.name)} + hàng</div>
+        <div class="bn">${bases.length}</div>
+        <div class="bi">${goods.length} kiện trên pallet<br>vol. ${fmt2(goods.reduce((s2, b) => s2 + b.l * b.w * b.h, 0) / 1e9)} m³<br>wg ${fmt2(wg)} kg<br>L ${G.l}<br>W ${G.w}<br>H ≤ ${Math.round(top)}<br>&nbsp;&nbsp;&nbsp;(mm)</div>
+        <div class="br">pallet #${nos.length > 1 && nos[nos.length - 1] - nos[0] === nos.length - 1 ? nos[0] + '–' + nos[nos.length - 1] : nos.length > 5 ? nos.slice(0, 4).join(', ') + ', …' : nos.join(', ')}<br>đưa nguyên pallet · tầng Z ${zs.join(', ')} mm</div>
+        <div class="bv r"><span>view from front-right</span><img src="${v.right}"></div>
+        <div class="bv l"><span>view from front-left</span><img src="${v.left}"></div></div>`);
+        G.boxes.forEach(b => before.add(b));
+        await new Promise(r => setTimeout(r, 0));
+        continue;
+      }
       const lying = G.h !== it.h ? 'lật nghiêng' : 'đáy chuẩn';
       const zs = [...new Set(G.boxes.map(b => Math.round(b.z)))].sort((a, b) => a - b);
       blocks.push(`<div class="blk">
@@ -459,15 +481,24 @@ export async function exportPdf(ctx, opts, progress) {
       const groups = [];
       for (const b of c.boxes) {
         const g = groups[groups.length - 1], dim = `${b.l}×${b.w}×${b.h}`;
-        if (g && g.t === b.t && g.dim === dim && Math.abs(g.z - b.z) < 1) { g.to = b.step; g.n++; }
+        if (b.pal) { // chế độ pallet: 1 dòng cho cả pallet (tấm pallet + hàng trên nó)
+          if (g && g.pal === b.pal) { g.to = b.step; if (!R.items[b.t]?.pallet) { g.cnt[b.t] = (g.cnt[b.t] || 0) + 1; g.top = Math.max(g.top, b.z + b.h); } continue; }
+          groups.push({ t: b.t, pal: b.pal, from: b.step, to: b.step, n: 1, dim, x: b.x, y: b.y, z: b.z, base: b, cnt: {}, top: b.z + b.h });
+          continue;
+        }
+        if (g && !g.pal && g.t === b.t && g.dim === dim && Math.abs(g.z - b.z) < 1) { g.to = b.step; g.n++; }
         else groups.push({ t: b.t, from: b.step, to: b.step, n: 1, dim, x: b.x, y: b.y, z: b.z });
+      }
+      for (const g of groups) if (g.pal) {
+        g.dim = `${g.base.l}×${g.base.w}×${Math.round(g.top - g.base.z)}`;
+        g.label = `Pallet #${g.pal}: ` + Object.entries(g.cnt).map(([t, n]) => `${n} × ${R.items[t].name}`).join(', ');
       }
       const PER = 28;
       for (let k = 0; k < groups.length; k += PER) {
         pages.push(`${head}<h3>Trình tự xếp${groups.length > PER ? ` (${Math.floor(k / PER) + 1}/${Math.ceil(groups.length / PER)})` : ''}</h3>
-          <div class="note">X tính từ vách trong ra cửa, Y từ vách trái, Z từ sàn (toạ độ của kiện đầu tiên trong dòng). Các bước liên tiếp cùng loại, cùng hướng, cùng tầng được gộp 1 dòng.</div>
+          <div class="note">X tính từ vách trong ra cửa, Y từ vách trái, Z từ sàn (toạ độ của kiện đầu tiên trong dòng). Các bước liên tiếp cùng loại, cùng hướng, cùng tầng được gộp 1 dòng.${groups.some(g => g.pal) ? ' Mỗi pallet (tấm pallet + hàng trên nó) là 1 dòng, kích thước = dài × rộng × cao cả pallet.' : ''}</div>
           <table><tr><th>Bước</th><th>Kiện</th><th>SL</th><th>Hướng đặt D×R×C (mm)</th><th>X (mm)</th><th>Y (mm)</th><th>Z (mm)</th></tr>
-          ${groups.slice(k, k + PER).map(g => `<tr><td>${g.from}${g.to > g.from ? '–' + g.to : ''}</td><td><span class="sw" style="background:${colorOf(g.t)}"></span>${esc(R.items[g.t].name)}</td><td class="r">${g.n}</td><td>${g.dim}</td><td class="r">${fmt(g.x)}</td><td class="r">${fmt(g.y)}</td><td class="r">${fmt(g.z)}</td></tr>`).join('')}</table>`);
+          ${groups.slice(k, k + PER).map(g => `<tr><td>${g.from}${g.to > g.from ? '–' + g.to : ''}</td><td><span class="sw" style="background:${colorOf(g.t)}"></span>${esc(g.label || R.items[g.t].name)}</td><td class="r">${g.n}</td><td>${g.dim}</td><td class="r">${fmt(g.x)}</td><td class="r">${fmt(g.y)}</td><td class="r">${fmt(g.z)}</td></tr>`).join('')}</table>`);
       }
     }
     // ----- Cắt lớp theo chiều cao -----
