@@ -822,7 +822,6 @@ function renderStats(st) {
   $('#stats').innerHTML = `
     <div class="row"><b>Container #${current + 1}</b><span>${fmt(C.l)}×${fmt(C.w)}×${fmt(C.h)}</span></div>
     <div class="row"><span>Số kiện</span><b>${fmt(st.n)}</b></div>
-    ${st.cog ? `<div class="row ${cogWarn ? 'warn' : ''}"><span>Trọng tâm ●</span><b>${fmt(cogX, 0)}% dài · ${fmt(cogY, 0)}% rộng</b></div>` : ''}
     ${cogWarn ? '<div class="warn">⚠ Trọng tâm lệch nhiều khỏi giữa</div>' : ''}
     ${(() => { const n = result.containers[current].boxes.filter(b => b.bad).length; return n ? `<div class="warn">⚠ ${n} kiện đặt tạm sai vị trí (tô đỏ) — chọn kiện rồi xoay (R) / di chuyển (M)</div>` : ''; })()}`;
 }
