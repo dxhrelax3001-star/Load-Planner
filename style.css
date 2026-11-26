@@ -174,7 +174,17 @@ body.splitting #viewer { pointer-events: none; }
 .steps { display: flex; align-items: center; gap: 4px; }
 .steps input[type=range] { flex: 1; }
 .step-info { min-width: 260px; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bottom { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; max-height: 26vh; overflow: auto; }
+.bottom { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; max-height: 26vh; overflow: auto; flex-shrink: 0; }
+.bottom.sized { max-height: none; height: var(--bottom); }
+/* Thanh kéo ngang: chỉnh cỡ khung 3D ↕ phần kết quả */
+.hsplitter { height: 10px; margin: -5px 0; cursor: row-resize; position: relative; touch-action: none; flex-shrink: 0; }
+.hsplitter::before { content: ''; position: absolute; left: 0; right: 0; top: 4px; height: 2px; border-radius: 2px; background: transparent; transition: background .15s; }
+.hsplitter::after { content: '⋯'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 38px; height: 10px; line-height: 6px; text-align: center;
+  font-size: 14px; color: #8a94a3; background: #fff; border: 1px solid var(--line); border-radius: 5px; }
+.hsplitter:hover::before, .hsplitter.drag::before { background: #1a73e8; }
+.hsplitter:hover::after, .hsplitter.drag::after { color: #1a73e8; border-color: #1a73e8; }
+body.hsplitting { cursor: row-resize; user-select: none; }
+body.hsplitting #viewer { pointer-events: none; }
 .summary { font-size: 12px; }
 .summary .big { font-size: 18px; font-weight: 700; }
 .summary .alert { background: #fdeeee; border: 1px solid #f3c2c2; color: #9c2b2b; border-radius: 6px; padding: 6px 8px; margin-top: 6px; }

@@ -732,6 +732,34 @@ new ResizeObserver(resize).observe(viewer);
   // cửa sổ thu nhỏ: giữ phần 3D không bị ép quá hẹp
   window.addEventListener('resize', () => { const v = parseInt(lay.style.getPropertyValue('--left')); if (v) apply(v); });
 })();
+/* ---- Thanh kéo ngang: khung 3D ↕ phần kết quả bên dưới, nhớ chiều cao ---- */
+(() => {
+  const sp = $('#hsplit'), bot = document.querySelector('.bottom'), KEY = 'loadplanner.hsplit';
+  const MIN_B = 40, MIN_V = 300;
+  const apply = h => {
+    const sec = bot.parentElement.getBoundingClientRect(), max = Math.max(MIN_B, sec.height - MIN_V - 140);
+    h = Math.round(Math.max(MIN_B, Math.min(max, h)));
+    bot.style.setProperty('--bottom', h + 'px'); bot.classList.add('sized');
+    return h;
+  };
+  try { const h = +localStorage.getItem(KEY); if (h > 0) apply(h); } catch {}
+  let drag = null;
+  sp.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    e.preventDefault(); sp.setPointerCapture(e.pointerId);
+    drag = { y: e.clientY, h: bot.getBoundingClientRect().height };
+    sp.classList.add('drag'); document.body.classList.add('hsplitting');
+  });
+  sp.addEventListener('pointermove', e => { if (drag) apply(drag.h - (e.clientY - drag.y)); });
+  const end = () => {
+    if (!drag) return; drag = null;
+    sp.classList.remove('drag'); document.body.classList.remove('hsplitting');
+    try { localStorage.setItem(KEY, parseInt(bot.style.getPropertyValue('--bottom')) || ''); } catch {}
+  };
+  sp.addEventListener('pointerup', end); sp.addEventListener('pointercancel', end);
+  sp.addEventListener('dblclick', () => { bot.classList.remove('sized'); bot.style.removeProperty('--bottom'); try { localStorage.removeItem(KEY); } catch {} toast('Đã đưa cỡ khung 3D về mặc định.'); });
+  window.addEventListener('resize', () => { const v = parseInt(bot.style.getPropertyValue('--bottom')); if (v) apply(v); });
+})();
 (function loop() { requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); })();
 
 function clearScene() {
