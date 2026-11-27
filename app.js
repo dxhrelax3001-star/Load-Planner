@@ -799,7 +799,7 @@ function buildScene() {
   const door = textSprite('CỬA ▶', 0.3, '#14243a'); door.position.set(L + 0.5, H / 2, W / 2); shell.add(door);
   shell.visible = $('#vWalls').checked;
   group.add(shell);
-  // Gù container (2 góc trên phía trong)
+  // Gù container (2 góc trên phía trong) + thanh ngang trên khung cửa
   const cornerMat = new THREE.MeshLambertMaterial({ color: 0x5b6676 });
   for (const g of cornerBlocks(C)) {
     const m = new THREE.Mesh(unitBox, cornerMat);

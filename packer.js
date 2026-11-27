@@ -3,11 +3,17 @@
 
 const EPS = 0.5;
 
-/** Gù container: 2 khối 110×110×110 ở 2 góc trên, sát vách trong (x = 0) — kiện không được chiếm chỗ này */
-export const CORNER = 110;
+/** Vật cản cố định trong container — kiện không được chiếm chỗ:
+ *  - 2 gù 110×110×110 ở 2 góc trên, sát vách trong (x = 0)
+ *  - thanh ngang trên khung cửa 100×100, chạy hết chiều rộng (x = L - 100) */
+export const CORNER = 110, DOOR_BEAM = 100;
 export function cornerBlocks(C) {
-  const s = CORNER, z = C.h - s;
-  return [{ x: 0, y: 0, z, l: s, w: s, h: s }, { x: 0, y: C.w - s, z, l: s, w: s, h: s }];
+  const s = CORNER, z = C.h - s, d = DOOR_BEAM;
+  return [
+    { x: 0, y: 0, z, l: s, w: s, h: s },
+    { x: 0, y: C.w - s, z, l: s, w: s, h: s },
+    { x: C.l - d, y: 0, z: C.h - d, l: d, w: C.w, h: d },
+  ];
 }
 
 /** Các hướng đặt cho phép của một kiện */
@@ -91,8 +97,8 @@ function project(p, axis, boxes) {
 /** Xếp danh sách kiện (units) vào 1 container. Trả về {boxes, left} */
 function packOne(units, C, opt, initial = []) {
   const boxes = initial.map(b => ({ ...b }));
-  const nBlocks = opt.corners ? 2 : 0;
-  if (nBlocks) for (const g of cornerBlocks(C)) boxes.push({ ...g, corner: true, unit: { weight: 0, stackable: false, maxLoad: 0 }, loadOn: 0 });
+  const blocks = opt.corners ? cornerBlocks(C) : [], nBlocks = blocks.length;
+  for (const g of blocks) boxes.push({ ...g, corner: true, unit: { weight: 0, stackable: false, maxLoad: 0 }, loadOn: 0 });
   computeLoads(boxes);
   let eps = [{ x: 0, y: 0, z: 0 }];
   let weight = boxes.reduce((s, b) => s + b.unit.weight, 0);
@@ -181,7 +187,7 @@ export function computeLoads(boxes) {
 export function canPlace(b, unit, boxes, C, minSupport) {
   if (b.x < -EPS || b.y < -EPS || b.z < -EPS || b.x + b.l > C.l + EPS || b.y + b.w > C.w + EPS || b.z + b.h > C.h + EPS)
     return 'Vượt ra ngoài container';
-  if (collides(b, cornerBlocks(C))) return 'Vướng gù container (góc trên phía trong)';
+  if (collides(b, cornerBlocks(C))) return 'Vướng gù / thanh cửa container';
   if (collides(b, boxes)) return 'Chồng lấn kiện khác';
   if (b.z > EPS && unit.floorOnly) return 'Kiện này chỉ được đặt trên sàn';
   if (!supportOf(b, boxes, minSupport, unit)) return 'Không đủ đỡ bên dưới, hoặc kiện dưới không cho xếp chồng / quá tải';
