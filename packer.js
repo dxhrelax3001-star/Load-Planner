@@ -3,6 +3,13 @@
 
 const EPS = 0.5;
 
+/** Gù container: 2 khối 110×110×110 ở 2 góc trên, sát vách trong (x = 0) — kiện không được chiếm chỗ này */
+export const CORNER = 110;
+export function cornerBlocks(C) {
+  const s = CORNER, z = C.h - s;
+  return [{ x: 0, y: 0, z, l: s, w: s, h: s }, { x: 0, y: C.w - s, z, l: s, w: s, h: s }];
+}
+
 /** Các hướng đặt cho phép của một kiện */
 export function orientations(item) {
   const { l, w, h } = item;
@@ -84,6 +91,8 @@ function project(p, axis, boxes) {
 /** Xếp danh sách kiện (units) vào 1 container. Trả về {boxes, left} */
 function packOne(units, C, opt, initial = []) {
   const boxes = initial.map(b => ({ ...b }));
+  const nBlocks = opt.corners ? 2 : 0;
+  if (nBlocks) for (const g of cornerBlocks(C)) boxes.push({ ...g, corner: true, unit: { weight: 0, stackable: false, maxLoad: 0 }, loadOn: 0 });
   computeLoads(boxes);
   let eps = [{ x: 0, y: 0, z: 0 }];
   let weight = boxes.reduce((s, b) => s + b.unit.weight, 0);
@@ -111,13 +120,13 @@ function packOne(units, C, opt, initial = []) {
       }
     }
     if (!best) { left.push(u); continue; }
-    const b = Object.assign(best.b, { unit: u, loadOn: 0, step: boxes.length + 1 });
+    const b = Object.assign(best.b, { unit: u, loadOn: 0, step: boxes.length + 1 - nBlocks });
     for (const s of best.sup) s.box.loadOn += s.share;
     boxes.push(b);
     weight += u.weight;
     eps = updateEPs(eps, b, boxes, C);
   }
-  return { boxes, left, weight };
+  return { boxes: nBlocks ? boxes.filter(b => !b.corner) : boxes, left, weight };
 }
 
 /** Sinh điểm cực mới sau khi đặt kiện b */
@@ -172,6 +181,7 @@ export function computeLoads(boxes) {
 export function canPlace(b, unit, boxes, C, minSupport) {
   if (b.x < -EPS || b.y < -EPS || b.z < -EPS || b.x + b.l > C.l + EPS || b.y + b.w > C.w + EPS || b.z + b.h > C.h + EPS)
     return 'Vượt ra ngoài container';
+  if (collides(b, cornerBlocks(C))) return 'Vướng gù container (góc trên phía trong)';
   if (collides(b, boxes)) return 'Chồng lấn kiện khác';
   if (b.z > EPS && unit.floorOnly) return 'Kiện này chỉ được đặt trên sàn';
   if (!supportOf(b, boxes, minSupport, unit)) return 'Không đủ đỡ bên dưới, hoặc kiện dưới không cho xếp chồng / quá tải';
@@ -210,7 +220,7 @@ function sortUnits(units, cmp) {
  * fixed: các container đang có (xếp tay) [{ spec, boxes }] hoặc [boxes] — giữ nguyên kiện, xếp thêm vào trước.
  */
 export function plan(items, fleet, opt = {}, fixed = []) {
-  const o = { minSupport: 0.75, maxContainers: 50, strategy: 'auto', ...opt };
+  const o = { minSupport: 0.75, maxContainers: 50, strategy: 'auto', corners: true, ...opt };
   const rows = Array.isArray(fleet) ? fleet : [{ spec: fleet, qty: null }];
   const usedQty = rows.map(() => 0);
   const nextSpec = () => {

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { orientations, canPlace, computeLoads } from './packer.js';
+import { orientations, canPlace, computeLoads, cornerBlocks } from './packer.js';
 import { exportPdf } from './pdf.js';
 
 /* ================== Dữ liệu ================== */
@@ -799,6 +799,15 @@ function buildScene() {
   const door = textSprite('CỬA ▶', 0.3, '#14243a'); door.position.set(L + 0.5, H / 2, W / 2); shell.add(door);
   shell.visible = $('#vWalls').checked;
   group.add(shell);
+  // Gù container (2 góc trên phía trong)
+  const cornerMat = new THREE.MeshLambertMaterial({ color: 0x5b6676 });
+  for (const g of cornerBlocks(C)) {
+    const m = new THREE.Mesh(unitBox, cornerMat);
+    m.scale.set(g.l / 1000, g.h / 1000, g.w / 1000);
+    m.position.set((g.x + g.l / 2) / 1000, (g.z + g.h / 2) / 1000, (g.y + g.w / 2) / 1000);
+    m.add(new THREE.LineSegments(unitEdges, edgeMat));
+    m.name = 'corner'; group.add(m);
+  }
   // Kiện hàng
   const mats = {};
   for (const b of c.boxes) {
