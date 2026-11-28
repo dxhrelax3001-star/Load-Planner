@@ -141,12 +141,12 @@
   <h2>3. Giao diện</h2>
   <table>
     <tr><th style="width:26%">Khu vực</th><th>Chức năng</th></tr>
-    <tr><td>Thanh trên cùng</td><td>Mới, Mở, Lưu dự án · Nhập Excel, File mẫu · Xuất Excel, Xuất PDF, In.</td></tr>
+    <tr><td>Thanh trên cùng</td><td>Mới, Mở, Lưu, 🕘 Khôi phục dự án · Nhập Excel, File mẫu · Xuất Excel, Xuất PDF, In. Màn hình hẹp (hoặc Windows đặt tỷ lệ hiển thị 125–200%) chỉ hiện biểu tượng — rê chuột lên nút để xem tên.</td></tr>
     <tr><td>Cột trái — Container</td><td>Danh sách loại cont / xe dùng để xếp, số lượng từng loại, tuỳ chọn thuật toán.</td></tr>
     <tr><td>Cột trái — Kiện hàng</td><td>Bảng kiện hàng, bảng màu, nút <b>⚡ Tính toán xếp hàng</b>.</td></tr>
     <tr><td>Bên phải — Tab container</td><td>Mỗi container trong phương án là một tab: <b>#1 40HC · 186 kiện</b>. Bấm để xem, <b>✕</b> để xoá, <b>＋ Cont</b> thêm cont trống, <b>Xoá tất cả</b>.</td></tr>
     <tr><td>Bên phải — Khung 3D</td><td>Mô hình container và kiện hàng; bảng số liệu (số kiện) ở góc trái trên.</td></tr>
-    <tr><td>Nút góc nhìn</td><td><b>✋ Xếp tay</b>, <b>3D</b>, <b>Trên</b>, <b>Cạnh</b>, <b>Cửa</b>, tích <b>Vách</b> (hiện vỏ cont), <b>Số bước</b> (hiện số thứ tự trên kiện).</td></tr>
+    <tr><td>Nút góc nhìn</td><td><b>✋ Xếp tay</b>, <b>3D</b>, <b>Trên</b>, <b>Cạnh</b>, <b>Cửa</b>, tích <b>Vách</b> (hiện vỏ cont), <b>Số bước</b> (hiện số thứ tự trên kiện), ô <b>3D: Tự động / Cao / Nhẹ</b> (chất lượng hình 3D).</td></tr>
     <tr><td>Thanh trình tự</td><td>⏮ ◀ ▶ ▶| ⏭ và thanh kéo để xem từng bước xếp.</td></tr>
     <tr><td>Dưới cùng</td><td>Tóm tắt kết quả, kiện chưa xếp được, chú thích màu từng loại kiện.</td></tr>
   </table>
@@ -162,7 +162,8 @@
   <ul>
     <li><span class="t">🗋 Mới</span>: tạo dự án trống (xoá danh sách kiện hiện tại — hãy lưu trước nếu cần).</li>
     <li><span class="t">💾 Lưu</span>: đặt tên và tải file dự án <code>.json</code> về máy (gồm cont, kiện hàng và cả phương án đã chỉnh tay).</li>
-    <li><span class="t">📂 Mở</span>: mở lại file <code>.json</code> đã lưu.</li>
+    <li><span class="t">📂 Mở</span>: mở lại file <code>.json</code> đã lưu. File hỏng / không đúng mẫu sẽ báo lỗi và <b>giữ nguyên</b> dự án đang mở.</li>
+    <li><span class="t">🕘 Khôi phục</span>: lấy lại 1 trong 5 bản <b>sao lưu tự động</b> gần nhất. Máy tự sao lưu trước khi bấm Mới / Mở / Khôi phục / Nhập Excel kiểu thay thế, và 10 phút một lần khi đang sửa. Bản sao lưu chỉ nằm trên máy (trình duyệt) đó.</li>
   </ul>
   <div class="box tip"><b>Tự lưu</b>Mọi thay đổi được tự lưu trong trình duyệt — đóng tab rồi mở lại vẫn còn. Nhưng xoá dữ liệu trình duyệt hoặc đổi máy / trình duyệt khác thì sẽ mất, nên lưu file <code>.json</code> cho các lô hàng quan trọng.</div>
 </section>
@@ -325,6 +326,9 @@
     <li><b>Số bước:</b> tích để hiện số thứ tự xếp trên từng kiện.</li>
     <li><b>Trình tự xếp:</b> thanh dưới khung 3D — <b>▶</b> phát tự động, <b>◀ / ▶|</b> từng bước, kéo thanh trượt để tới bước bất kỳ, <b>⏭</b> hiện tất cả.</li>
     <li>Rê chuột lên một kiện: hiện tên, kích thước, vị trí, bước xếp.</li>
+    <li><b>Chất lượng 3D</b> (ô <span class="t">3D: Tự động</span>): <b>Tự động</b> — máy mạnh dùng hình nét, máy yếu / chạy giật thì tự chuyển sang <b>Nhẹ</b>; <b>Cao</b> — luôn nét nhất; <b>Nhẹ</b> — giảm độ nét để máy cấu hình thấp, màn 4K chạy mượt. Rê chuột lên ô để xem tên card đồ hoạ đang dùng.</li>
+    <li>Khung 3D chỉ vẽ lại khi có thao tác nên gần như không tốn máy lúc để yên.</li>
+    <li>Máy không hiển thị được 3D (WebGL bị tắt, driver card màn hình lỗi) sẽ có thông báo; nhập kiện, tính toán, xuất Excel / PDF vẫn dùng được.</li>
   </ul>
 </section>
 
@@ -430,7 +434,8 @@
     <li>Chưa tính <b>tải trọng trục xe</b>, phân vùng tải sàn, chèn lót, khe hở chằng buộc — hãy chừa dư kích thước nếu cần.</li>
     <li>Xếp pallet: kiện không được thò ra ngoài mặt pallet; khi cho chồng pallet, máy coi mặt trên mỗi pallet là phẳng — hãy kiểm tra lại độ phẳng thực tế.</li>
     <li>Dữ liệu tự lưu trong trình duyệt của từng máy; người khác mở link chia sẻ sẽ thấy dữ liệu riêng của họ, không thấy dự án của bạn — gửi file <code>.json</code> nếu muốn chia sẻ.</li>
-    <li>Cần Internet để tải thư viện 3D, Excel, PDF.</li>
+    <li>Thư viện 3D, Excel, PDF đi kèm ứng dụng — không cần tải từ CDN bên ngoài (mạng công ty chặn CDN vẫn dùng được).</li>
+    <li>Trình duyệt: <b>Google Chrome</b> hoặc <b>Microsoft Edge</b> bản mới (từ 2021). Không mở trực tiếp file <code>index.html</code> từ thư mục — hãy mở bằng địa chỉ web.</li>
   </ul>
 </section>
 

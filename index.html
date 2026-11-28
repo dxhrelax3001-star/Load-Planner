@@ -12,12 +12,43 @@
 <meta property="og:description" content="Load Planner by DxH – lập phương án xếp hàng vào container 3D, xuất PDF / Excel.">
 <meta property="og:url" content="https://dxhrelax3001-star.github.io/Load-Planner/">
 <link rel="stylesheet" href="style.css">
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<!-- Thư viện đi kèm trong vendor/ (không cần Internet / CDN): Three.js 0.160, SheetJS 0.18.5, jsPDF 2.5.1 -->
 <script type="importmap">
 { "imports": {
-  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  "three": "./vendor/three/three.module.min.js",
+  "three/addons/": "./vendor/three/addons/"
 } }
+</script>
+<script>
+/* Kiểm tra khởi động: nếu app không chạy được thì hiện lý do + cách khắc phục thay vì để trang trắng */
+(function () {
+  var errs = [];
+  function show(reason) {
+    if (window.__lpReady || document.getElementById('bootErr')) return;
+    var d = document.createElement('div'); d.id = 'bootErr'; d.className = 'boot-err';
+    d.innerHTML = '<div><h2>⚠ Load Planner chưa khởi động được</h2><p>' + reason + '</p>'
+      + (errs.length ? '<details><summary>Chi tiết kỹ thuật</summary><pre></pre></details>' : '')
+      + '<p><button onclick="location.reload()">↻ Tải lại trang</button></p>'
+      + '<p class="muted">Dữ liệu đã nhập vẫn được giữ trong trình duyệt. Nên dùng Google Chrome hoặc Microsoft Edge bản mới.</p></div>';
+    document.body.appendChild(d);
+    var pre = d.querySelector('pre'); if (pre) pre.textContent = errs.join('\n');
+  }
+  window.addEventListener('error', function (e) {
+    errs.push((e.message || (e.target && (e.target.src || e.target.href)) || 'lỗi') + (e.filename ? ' @ ' + e.filename + ':' + e.lineno : ''));
+  }, true);
+  window.addEventListener('unhandledrejection', function (e) { errs.push(String(e.reason && (e.reason.stack || e.reason))); });
+  var bad = location.protocol === 'file:'
+    ? 'Trang đang được mở trực tiếp từ file (file://) — trình duyệt chặn cách chạy này.<br>Hãy mở bằng địa chỉ web: <b>https://dxh3001.pages.dev/load-planner/</b> hoặc qua máy chủ (http://…:3200).'
+    : (window.HTMLScriptElement && HTMLScriptElement.supports && !HTMLScriptElement.supports('importmap')) || !window.Worker || !window.Promise
+      ? 'Trình duyệt này quá cũ, không hỗ trợ các chức năng cần thiết.<br>Hãy dùng <b>Google Chrome</b> hoặc <b>Microsoft Edge</b> phiên bản mới (từ 2021 trở đi).'
+      : '';
+  document.addEventListener('DOMContentLoaded', function () { if (bad) show(bad); });
+  window.addEventListener('load', function () {
+    setTimeout(function () {
+      if (!window.__lpReady) show('Một phần của ứng dụng không tải được hoặc bị lỗi khi chạy (mạng chập chờn, file bị chặn, hoặc trình duyệt không tương thích).');
+    }, 300);
+  });
+})();
 </script>
 </head>
 <body>
@@ -25,17 +56,18 @@
   <div class="brand">📦 <b>Load Planner</b><b class="by">by DxH</b> <span>Xếp hàng container 3D</span></div>
   <label class="pname" title="Tên dự án — dùng làm tên file khi Lưu, tiêu đề báo cáo PDF / Excel / In">📁 Dự án <input id="projName" placeholder="Nhập tên dự án…" maxlength="120"></label>
   <div class="actions">
-    <button id="btnNew" title="Dự án mới">🗋 Mới</button>
-    <button id="btnOpen" title="Mở file dự án .json">📂 Mở</button>
-    <button id="btnSave" title="Lưu dự án ra file .json">💾 Lưu</button>
+    <button id="btnNew" title="Dự án mới">🗋<span class="bt"> Mới</span></button>
+    <button id="btnOpen" title="Mở file dự án .json">📂<span class="bt"> Mở</span></button>
+    <button id="btnSave" title="Lưu dự án ra file .json">💾<span class="bt"> Lưu</span></button>
+    <button id="btnRestore" title="Khôi phục bản lưu tự động (5 bản gần nhất trong trình duyệt)">🕘<span class="bt"> Khôi phục</span></button>
     <span class="sep"></span>
-    <button id="btnImport" title="Nhập danh sách kiện từ Excel/CSV">📥 Nhập Excel</button>
-    <button id="btnTemplate" title="Tải file Excel mẫu">📄 File mẫu</button>
-    <button id="btnExport" title="Xuất kế hoạch xếp hàng ra Excel">📤 Xuất Excel</button>
-    <button id="btnPdf" title="Tải file PDF: tổng hợp, hình 3D, trình tự xếp, hình cắt lớp">📄 Xuất PDF</button>
-    <button id="btnPrint" title="In báo cáo kế hoạch xếp hàng">🖨 In</button>
+    <button id="btnImport" title="Nhập danh sách kiện từ Excel/CSV">📥<span class="bt"> Nhập Excel</span></button>
+    <button id="btnTemplate" title="Tải file Excel mẫu">📄<span class="bt"> File mẫu</span></button>
+    <button id="btnExport" title="Xuất kế hoạch xếp hàng ra Excel">📤<span class="bt"> Xuất Excel</span></button>
+    <button id="btnPdf" title="Tải file PDF: tổng hợp, hình 3D, trình tự xếp, hình cắt lớp">📄<span class="bt"> Xuất PDF</span></button>
+    <button id="btnPrint" title="In báo cáo kế hoạch xếp hàng">🖨<span class="bt"> In</span></button>
     <span class="sep"></span>
-    <a href="huong-dan.html" target="_blank" class="help-link" title="Hướng dẫn sử dụng (mở tab mới)">❓ Hướng dẫn</a>
+    <a href="huong-dan.html" target="_blank" class="help-link" title="Hướng dẫn sử dụng (mở tab mới)">❓<span class="bt"> Hướng dẫn</span></a>
   </div>
   <input type="file" id="fileOpen" accept=".json" hidden>
   <input type="file" id="fileImport" accept=".xlsx,.xls,.csv" hidden>
@@ -135,6 +167,7 @@
         <button data-view="back" class="small">Cửa</button>
         <label class="chk"><input type="checkbox" id="vWalls" checked> Vách</label>
         <label class="chk"><input type="checkbox" id="vLabels"> Số bước</label>
+        <select id="q3d" class="q3d"><option value="auto">3D: Tự động</option><option value="high">3D: Cao</option><option value="low">3D: Nhẹ</option></select>
       </div>
     </div>
     <div id="viewer">

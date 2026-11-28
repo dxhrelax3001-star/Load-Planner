@@ -2,7 +2,7 @@
 // Trang được dựng bằng HTML rồi chuyển sang PDF dạng VECTOR: chữ là chữ thật (phông Arial nhúng, tiếng Việt),
 // khung / đường kẻ / nền là hình vẽ, chỉ ảnh 3D & hình cắt lớp là ảnh → mở bằng PDF Editor sửa được chữ, bảng.
 
-const JSPDF = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+const JSPDF = 'vendor/jspdf.umd.min.js'; // jsPDF 2.5.1 (đi kèm app)
 const PAGE_W = 1123, PAGE_H = 794; // A4 ngang @96dpi
 
 /* ================= HTML → PDF vector ================= */
@@ -139,11 +139,13 @@ function logoDataUrl() {
   return c.toDataURL('image/png');
 }
 
-function loadScript(src) {
-  return new Promise((res, rej) => {
-    if (document.querySelector(`script[src="${src}"]`)) return res();
+/** Tải thư viện (thư mục vendor/ đi kèm app) khi cần lần đầu — không phụ thuộc CDN, không làm chậm lúc mở trang */
+const scriptCache = {};
+export function loadScript(src) {
+  return scriptCache[src] ||= new Promise((res, rej) => {
     const s = document.createElement('script');
-    s.src = src; s.onload = res; s.onerror = () => rej(new Error('Không tải được thư viện PDF (cần Internet): ' + src));
+    s.src = src; s.onload = res;
+    s.onerror = () => { delete scriptCache[src]; s.remove(); rej(new Error('Không tải được thư viện ' + src + ' — hãy tải lại trang (F5).')); };
     document.head.appendChild(s);
   });
 }

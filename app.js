@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { orientations, canPlace, computeLoads, cornerBlocks } from './packer.js';
-import { exportPdf } from './pdf.js';
+import { exportPdf, loadScript } from './pdf.js';
+const needXLSX = () => loadScript('vendor/xlsx.full.min.js'); // SheetJS 0.18.5 — chỉ tải khi Nhập / Xuất Excel
 
 /* ================== Dữ liệu ================== */
 const PRESETS = [
@@ -95,7 +96,19 @@ const manual = { on: false, pick: null, sel: -1, undo: [], redo: [], multi: new 
 const $ = s => document.querySelector(s);
 const fmt = (n, d = 0) => Number(n).toLocaleString('vi-VN', { maximumFractionDigits: d, minimumFractionDigits: d });
 function toast(msg, ms = 2500) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, ms); }
-function save() { try { localStorage.setItem(STORE, JSON.stringify(project)); } catch {} }
+function save() {
+  const put = () => localStorage.setItem(STORE, JSON.stringify(project));
+  try {
+    try { put(); }
+    catch (e) { localStorage.removeItem('loadplanner.backups'); put(); } // đầy bộ nhớ → nhường chỗ cho dự án đang làm
+    save.failed = false;
+    if (typeof backupNow === 'function' && Date.now() - backupNow.last > 600000) backupNow('tự động');
+  } catch {
+    // bộ nhớ trình duyệt đầy / bị chặn (chế độ ẩn danh, chính sách công ty) → báo rõ, không để người dùng tưởng đã lưu
+    if (!save.failed) toast('⚠ Không lưu được vào trình duyệt (bộ nhớ đầy hoặc bị chặn). Hãy bấm 💾 Lưu để lưu dự án ra file .json.', 8000);
+    save.failed = true;
+  }
+}
 function load() { try { return JSON.parse(localStorage.getItem(STORE)); } catch { return null; } }
 function download(name, blob) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -339,7 +352,7 @@ async function addImported(items, src) {
   if (!items.length) { toast('Không đọc được dòng hợp lệ (cần các cột Dài, Rộng, Cao).'); return false; }
   const mode = project.items.length ? await askImportMode(items.length, src) : 'append';
   if (!mode) { toast('Đã huỷ — không thêm dữ liệu nào.'); return false; }
-  if (mode === 'replace') { project.items = items.map((it, i) => ({ ...it, color: COLORS[i % COLORS.length] })); }
+  if (mode === 'replace') { backupNow('trước khi nhập Excel thay thế'); project.items = items.map((it, i) => ({ ...it, color: COLORS[i % COLORS.length] })); }
   else project.items.push(...items);
   save(); renderItems(); toast(`Đã ${mode === 'replace' ? 'thay bằng' : 'thêm'} ${items.length} loại kiện.`); markStale('kiện');
   return true;
@@ -347,6 +360,7 @@ async function addImported(items, src) {
 $('#btnImport').onclick = () => $('#fileImport').click();
 $('#fileImport').onchange = async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try { await needXLSX(); } catch (err) { return toast(err.message, 5000); }
   const wb = XLSX.read(await f.arrayBuffer());
   const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true });
   addImported(rowsToItems(rows), f.name);
@@ -398,7 +412,8 @@ document.addEventListener('paste', e => {
   if (manual.on) return; // chế độ Xếp tay: Ctrl+V là dán nhóm kiện, không phải nhập bảng
   const t = e.clipboardData.getData('text'); if (t) { e.preventDefault(); pasteText(t); }
 });
-$('#btnTemplate').onclick = () => {
+$('#btnTemplate').onclick = async () => {
+  try { await needXLSX(); } catch (err) { return toast(err.message, 5000); }
   const ws = XLSX.utils.aoa_to_sheet([
     ['Tên', 'Dài (mm)', 'Rộng (mm)', 'Cao (mm)', 'SL', 'Kg', 'Xoay (Tự do / Đứng / Cố định / Đứng nằm nghiêng / Chỉ nằm nghiêng / Chỉ dựng đứng / Dọc theo cont)', 'Xếp chồng (x)', 'Chịu tải (kg)', 'Chỉ sàn (x)', 'Ưu tiên'],
     ['Tủ áo 2 cánh', 1850, 620, 320, 40, 48, 'Tự do', 'x', '', '', 1],
@@ -411,8 +426,62 @@ $('#btnTemplate').onclick = () => {
 };
 
 /* ---------- Dự án ---------- */
+/* ---- Sao lưu tự động trong trình duyệt: 5 bản gần nhất (trước khi Mới / Mở / Khôi phục / Nhập thay thế, và 10 phút / lần khi đang sửa) ---- */
+const BK_KEY = 'loadplanner.backups', BK_MAX = 5;
+function backups() { try { const l = JSON.parse(localStorage.getItem(BK_KEY)); return Array.isArray(l) ? l : []; } catch { return []; } }
+function backupNow(reason) {
+  if (!project?.items?.length && !project?.plan) return;
+  const data = JSON.stringify(project), list = backups();
+  if (list[0]?.data === data) return;
+  list.unshift({ t: Date.now(), reason, name: project.name || '', n: project.items.length, data });
+  list.length = Math.min(list.length, BK_MAX);
+  backupNow.last = Date.now();
+  // bộ nhớ trình duyệt đầy → bỏ bớt bản cũ nhất (dự án đang làm luôn được ưu tiên lưu trước)
+  while (list.length) { try { localStorage.setItem(BK_KEY, JSON.stringify(list)); return; } catch { list.pop(); } }
+  try { localStorage.removeItem(BK_KEY); } catch {}
+}
+backupNow.last = Date.now();
+/** Áp dụng 1 dự án (từ file / bản sao lưu). Dữ liệu lỗi → giữ nguyên dự án đang mở, không làm hỏng gì. */
+function checkProject(p) {
+  const num = v => v === '' || v == null || Number.isFinite(+v);
+  if (!p || typeof p !== 'object' || !Array.isArray(p.items) || !(p.container || Array.isArray(p.fleet))) return 'thiếu danh sách kiện hoặc thông tin container';
+  const bad = p.items.findIndex(it => !it || typeof it !== 'object' || !num(it.l) || !num(it.w) || !num(it.h) || !num(it.qty) || !num(it.weight));
+  if (bad >= 0) return `kiện dòng ${bad + 1} có kích thước / số lượng không phải số`;
+  if (p.plan && !Array.isArray(p.plan.containers)) return 'phương án xếp bị hỏng';
+  return '';
+}
+function applyProject(p) {
+  const err = checkProject(p); if (err) throw new Error(err);
+  const keep = project, keepResult = result;
+  try {
+    project = { ...sample(), ...p }; syncPalette(); initContainer(); renderItems(); clearResult();
+    project.plan = p.plan || null; loadPlan(); save();
+  } catch (e) {
+    project = keep; result = keepResult; syncPalette(); initContainer(); renderItems(); clearResult(); loadPlan(); save();
+    throw e;
+  }
+}
+$('#btnRestore').onclick = () => {
+  const list = backups(), d = document.createElement('dialog'); d.className = 'dlg dlg-wide';
+  const when = t => new Date(t).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+  d.innerHTML = `<h3>🕘 Khôi phục bản lưu tự động</h3><div class="dlg-sec"><small>Trình duyệt tự giữ ${BK_MAX} bản gần nhất của dự án (trước khi bấm Mới / Mở / Khôi phục, và 10 phút một lần khi đang sửa). `
+    + `Bản sao lưu chỉ nằm trên máy này — muốn chuyển sang máy khác hãy dùng 💾 Lưu ra file .json.</small>`
+    + (list.length ? `<div class="bk-list">${list.map((b, i) => `<button type="button" data-i="${i}"><b>${when(b.t)}</b> · ${(b.name || '(chưa đặt tên)').replace(/</g, '&lt;')} · ${b.n} loại kiện <small>— ${b.reason}</small></button>`).join('')}</div>`
+      : '<p>Chưa có bản sao lưu nào.</p>') + `</div><div class="dlg-btns"><button type="button" data-x>Đóng</button></div>`;
+  document.body.append(d); d.showModal();
+  d.addEventListener('close', () => d.remove());
+  d.onclick = e => {
+    if (e.target.closest('[data-x]')) return d.close();
+    const b = e.target.closest('[data-i]'); if (!b) return;
+    const bk = list[+b.dataset.i];
+    if (!confirm(`Khôi phục bản lúc ${when(bk.t)}? Dự án đang mở sẽ được sao lưu lại trước khi thay.`)) return;
+    try { backupNow('trước khi khôi phục'); applyProject(JSON.parse(bk.data)); d.close(); toast('Đã khôi phục bản lúc ' + when(bk.t)); }
+    catch (err) { toast('Không khôi phục được: ' + err.message, 5000); }
+  };
+};
 $('#btnNew').onclick = () => {
-  if (!confirm('Tạo dự án mới? Danh sách kiện hiện tại sẽ bị xoá (hãy 💾 Lưu trước nếu cần).')) return;
+  if (!confirm('Tạo dự án mới? Danh sách kiện hiện tại sẽ bị xoá (đã tự sao lưu — lấy lại được bằng nút 🕘 Khôi phục).')) return;
+  backupNow('trước khi tạo dự án mới');
   project = { ...sample(), name: 'Dự án mới', items: [], palette: project.palette };
   save(); initContainer(); renderItems(); clearResult();
 };
@@ -424,12 +493,10 @@ $('#btnSave').onclick = () => {
 $('#btnOpen').onclick = () => $('#fileOpen').click();
 $('#fileOpen').onchange = async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
-  try {
-    const p = JSON.parse(await f.text());
-    if (!Array.isArray(p.items) || !p.container) throw 0;
-    project = { ...sample(), ...p }; syncPalette(); initContainer(); renderItems(); clearResult();
-    project.plan = p.plan || null; save(); loadPlan(); toast('Đã mở ' + f.name);
-  } catch { toast('File dự án không hợp lệ.'); }
+  let p;
+  try { p = JSON.parse(await f.text()); } catch { return toast('File không đọc được — không phải file dự án .json của Load Planner.', 5000); }
+  try { backupNow('trước khi mở file'); applyProject(p); toast('Đã mở ' + f.name); }
+  catch (err) { toast(`File dự án không hợp lệ (${err.message}) — dự án đang mở được giữ nguyên.`, 6000); }
 };
 
 /* ================== Tính toán ================== */
@@ -681,9 +748,54 @@ function renderLegend() {
 
 /* ================== 3D ================== */
 const viewer = $('#viewer');
-const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, alpha: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+/* ---- Chất lượng 3D tự thích ứng theo máy ----
+ * 'high' = khử răng cưa + độ nét theo màn hình (tối đa ×2); 'low' = không khử răng cưa, độ nét ×1 (máy yếu / card đồ hoạ tích hợp).
+ * 'auto' = tự đoán theo máy, và tự hạ xuống khi đo thấy khung hình chậm. */
+const Q_KEY = 'loadplanner.q3d';
+const gpu = (() => {
+  const info = { ok: false, soft: false, name: '' };
+  try {
+    const gl = document.createElement('canvas').getContext('webgl2') || document.createElement('canvas').getContext('webgl');
+    if (!gl) return info;
+    info.ok = true;
+    const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    info.name = String(ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
+    info.soft = /swiftshader|llvmpipe|software|basic render/i.test(info.name);
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+  } catch {}
+  return info;
+})();
+const q3d = { pref: (() => { try { return localStorage.getItem(Q_KEY) || 'auto'; } catch { return 'auto'; } })() };
+q3d.weak = gpu.soft || (navigator.deviceMemory && navigator.deviceMemory <= 4) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4);
+q3d.level = q3d.pref === 'auto' ? (q3d.weak ? 'low' : 'high') : q3d.pref;
+/** Độ nét (pixel ratio) cho khung 3D: giới hạn tổng số điểm ảnh để màn 2K/4K/scale 200% không bị nặng */
+function screenRatio() {
+  if (q3d.level === 'low') return 1;
+  const r = viewer.getBoundingClientRect(), dpr = Math.min(devicePixelRatio || 1, 2);
+  const maxPx = 4.2e6; // ≈ 1 màn 2K; vượt quá thì giảm độ nét
+  return Math.max(1, Math.min(dpr, Math.sqrt(maxPx / Math.max(1, r.width * r.height))));
+}
+/** Máy không chạy được WebGL: vẫn dùng được nhập liệu, tính toán, xuất Excel / PDF bảng — chỉ không có hình 3D */
+function fakeRenderer() {
+  const domElement = document.createElement('canvas');
+  return { domElement, fake: true, setPixelRatio() {}, setSize(w, h) { domElement.width = Math.max(1, w | 0); domElement.height = Math.max(1, h | 0); }, render() {} };
+}
+let renderer;
+try {
+  if (!gpu.ok) throw new Error('no webgl');
+  renderer = new THREE.WebGLRenderer({ antialias: q3d.level === 'high', alpha: true, powerPreference: 'high-performance' });
+} catch {
+  renderer = fakeRenderer();
+  const n = document.createElement('div'); n.className = 'no3d';
+  n.innerHTML = '⚠ Máy / trình duyệt này không hiển thị được hình 3D (WebGL bị tắt hoặc driver card màn hình lỗi).<br>'
+    + 'Các chức năng nhập kiện, tính toán, xuất Excel / PDF vẫn dùng được. Cách khắc phục: cập nhật Chrome / Edge, bật '
+    + '<b>Settings → System → Use graphics acceleration</b>, hoặc cập nhật driver card màn hình.';
+  viewer.append(n);
+}
+renderer.setPixelRatio(screenRatio());
 viewer.prepend(renderer.domElement);
+renderer.domElement.addEventListener('webglcontextlost', () => toast('Card màn hình tạm mất kết nối — hình 3D sẽ tự hiện lại sau giây lát.', 5000));
+renderer.domElement.addEventListener('webglcontextrestored', () => invalidate());
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(40, 1, 0.05, 500);
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -694,12 +806,15 @@ let group = null, boxMeshes = [], labels = [];
 const unitBox = new THREE.BoxGeometry(1, 1, 1);
 const unitEdges = new THREE.EdgesGeometry(unitBox);
 const edgeMat = new THREE.LineBasicMaterial({ color: 0x1d2733, transparent: true, opacity: 0.55 });
+const SHARED = new Set([unitBox, unitEdges, edgeMat]); // hình / vật liệu dùng chung: không giải phóng khi dựng lại cảnh
 
 function resize() {
   const r = viewer.getBoundingClientRect();
+  renderer.setPixelRatio(screenRatio());
   renderer.setSize(r.width, r.height, false);
   renderer.domElement.style.width = r.width + 'px'; renderer.domElement.style.height = r.height + 'px';
   camera.aspect = r.width / Math.max(1, r.height); camera.updateProjectionMatrix();
+  invalidate();
 }
 new ResizeObserver(resize).observe(viewer);
 
@@ -760,11 +875,56 @@ new ResizeObserver(resize).observe(viewer);
   sp.addEventListener('dblclick', () => { bot.classList.remove('sized'); bot.style.removeProperty('--bottom'); try { localStorage.removeItem(KEY); } catch {} toast('Đã đưa cỡ khung 3D về mặc định.'); });
   window.addEventListener('resize', () => { const v = parseInt(bot.style.getPropertyValue('--bottom')); if (v) apply(v); });
 })();
-(function loop() { requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); })();
+/* ---- Vẽ theo nhu cầu: chỉ vẽ lại khi góc nhìn / cảnh thay đổi, đứng yên thì gần như không tốn CPU / GPU ----
+ * Vẽ khi: camera đổi (controls.update() = true), có invalidate(), hoặc trong 1,5 s sau thao tác chuột / phím;
+ * ngoài ra vẽ "nhịp nghỉ" 2 lần / giây để không bao giờ bị sót hình khi cảnh đổi từ chỗ khác. */
+var dirty = true, activeUntil = 0, lastIdle = 0; // var: invalidate() có thể được gọi trước dòng này
+function invalidate() { dirty = true; }
+const poke = () => { activeUntil = performance.now() + 1500; };
+['pointerdown', 'pointermove', 'pointerup', 'wheel', 'keydown', 'keyup', 'input', 'change', 'click'].forEach(t => window.addEventListener(t, poke, { capture: true, passive: true }));
+const fps = { t0: 0, n: 0, slow: 0 };
+(function loop(now) {
+  requestAnimationFrame(loop);
+  if (renderer.fake || document.hidden) return;
+  const moved = controls.update();
+  if (!(moved || dirty || now < activeUntil || now - lastIdle > 500)) { fps.t0 = 0; return; }
+  if (now - lastIdle > 500) lastIdle = now;
+  dirty = false;
+  renderer.render(scene, camera);
+  // Tự động hạ chất lượng: đang thao tác liên tục mà < 24 khung / giây trong ~3 lần đo liên tiếp → giảm độ nét về ×1
+  if (q3d.pref !== 'auto' || q3d.level === 'low' || !(moved || now < activeUntil)) { fps.t0 = 0; return; }
+  if (!fps.t0) { fps.t0 = now; fps.n = 0; return; }
+  fps.n++;
+  if (now - fps.t0 >= 1000) {
+    const f = fps.n * 1000 / (now - fps.t0); fps.t0 = 0;
+    fps.slow = f < 24 ? fps.slow + 1 : 0;
+    if (fps.slow >= 3) { q3d.level = 'low'; fps.slow = 0; resize(); updQ3d(); toast('Máy chạy hình 3D chậm — đã tự chuyển sang chế độ 3D nhẹ.', 4000); }
+  }
+})(0);
+/* Ô chọn chất lượng 3D */
+function updQ3d() {
+  const s = $('#q3d'); if (!s) return;
+  s.value = q3d.pref;
+  s.title = `Chất lượng hình 3D — đang dùng: ${q3d.level === 'high' ? 'Cao' : 'Nhẹ'}` + (gpu.name ? `\nCard đồ hoạ: ${gpu.name}` : '')
+    + '\nTự động: máy yếu / chạy chậm thì tự dùng chế độ Nhẹ.';
+}
+$('#q3d').onchange = e => {
+  q3d.pref = e.target.value; try { localStorage.setItem(Q_KEY, q3d.pref); } catch {}
+  const lv = q3d.pref === 'auto' ? (q3d.weak ? 'low' : 'high') : q3d.pref;
+  const needReload = !renderer.fake && (lv === 'high') !== !!renderer.getContextAttributes?.().antialias;
+  q3d.level = lv; resize(); updQ3d();
+  toast(needReload ? 'Đã đổi chất lượng 3D. Khử răng cưa áp dụng đầy đủ sau khi tải lại trang (F5).' : 'Đã đổi chất lượng 3D.', 4000);
+};
+updQ3d();
 
+/** Giải phóng bộ nhớ card đồ hoạ của 1 đối tượng (trừ hình / vật liệu dùng chung) */
+function disposeObj(o) {
+  if (o.geometry && !o.isSprite && !SHARED.has(o.geometry)) o.geometry.dispose();
+  if (o.material && !SHARED.has(o.material)) { o.material.map?.dispose(); o.material.dispose?.(); }
+}
 function clearScene() {
-  if (group) { scene.remove(group); group.traverse(o => { if (o.material && o.material !== edgeMat) o.material.dispose?.(); }); }
-  labels.forEach(l => l.remove()); labels = [];
+  if (group) { scene.remove(group); group.traverse(disposeObj); }
+  labels.forEach(l => { l.removeFromParent(); disposeObj(l); }); labels = [];
   group = null; boxMeshes = [];
 }
 
@@ -777,6 +937,7 @@ function textSprite(text, size = 0.35, color = '#d64545') {
 
 // Toạ độ: x(dài) → X, z(cao) → Y, y(rộng) → Z (đơn vị m)
 function buildScene() {
+  invalidate();
   clearScene();
   const R = result; const c = R.containers[current]; if (!c) return;
   const C = R.container, L = C.l / 1000, W = C.w / 1000, H = C.h / 1000;
@@ -840,6 +1001,7 @@ function buildScene() {
 }
 
 function setView(v) {
+  invalidate();
   if (!result) return;
   const C = result.container, L = C.l / 1000, W = C.w / 1000, H = C.h / 1000;
   const ctr = new THREE.Vector3(L / 2, H / 2, W / 2), d = Math.max(L, W * 2, H * 2);
@@ -866,10 +1028,11 @@ function renderStats(st) {
 /* ---------- Trình tự xếp ---------- */
 let playT = null;
 function setStep(n) {
+  invalidate();
   const c = result?.containers[current]; if (!c) return;
   n = Math.max(0, Math.min(c.boxes.length, n));
   $('#step').value = n;
-  labels.forEach(l => l.remove()); labels = [];
+  labels.forEach(l => { l.removeFromParent(); disposeObj(l); }); labels = [];
   const showLab = $('#vLabels').checked;
   boxMeshes.forEach(m => {
     const b = m.userData;
@@ -917,8 +1080,9 @@ renderer.domElement.addEventListener('pointermove', e => {
 renderer.domElement.addEventListener('pointerleave', () => $('#tip').hidden = true);
 
 /* ================== Xuất Excel ================== */
-$('#btnExport').onclick = () => {
+$('#btnExport').onclick = async () => {
   if (!result) return toast('Hãy bấm ⚡ Tính toán xếp hàng trước.');
+  try { await needXLSX(); } catch (err) { return toast(err.message, 5000); }
   const R = result, wb = XLSX.utils.book_new();
   const sum = [['KẾ HOẠCH XẾP HÀNG', project.name || ''], ['Phương tiện', mixText(R)], [],
     ['Container', 'Loại', 'Kích thước trong (mm)', 'Số kiện', 'Thể tích (m³)', '% thể tích', 'Trọng lượng (kg)', '% tải', 'Chiều dài dùng (mm)', 'Trọng tâm X (%)', 'Trọng tâm Y (%)']];
@@ -988,7 +1152,7 @@ function snapshotFit(view, w, h) {
   renderer.render(scene, camera);
   const url = renderer.domElement.toDataURL('image/png');
   // khôi phục khung nhìn trên màn hình
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setPixelRatio(screenRatio());
   camera.position.copy(keepPos); controls.target.copy(keepTgt); camera.aspect = keepAspect; camera.updateProjectionMatrix();
   renderer.setSize(vr.width, vr.height, false); controls.update();
   return url;
@@ -1455,6 +1619,7 @@ function anchorTex(bg) {
 }
 const ancMat = new THREE.SpriteMaterial({ map: anchorTex('#1e88e5'), depthWrite: false });
 const ancMatHot = new THREE.SpriteMaterial({ map: anchorTex('#ff6d00'), depthWrite: false });
+SHARED.add(ancMat).add(ancMatHot);
 let ancHot = null;
 function clearAnchors() { anchorGroup.clear(); ancHot = null; }
 /** Tạo ký hiệu ＋ ở các mặt còn trống (đặt được) của mỗi kiện, theo hướng kiện đang cầm */
@@ -1674,6 +1839,7 @@ const groupExt = rel => ({ L: Math.max(...rel.map(r => r.rx + r.l)), W: Math.max
 let gGhost = null;
 const gMatOk = new THREE.MeshLambertMaterial({ color: 0x3ddc84, transparent: true, opacity: 0.5, depthWrite: false });
 const gMatBad = new THREE.MeshLambertMaterial({ color: 0xff4d4d, transparent: true, opacity: 0.5, depthWrite: false });
+SHARED.add(gMatOk).add(gMatBad);
 
 function copySel(cut) {
   const sel = selList(), c = curC();
@@ -2100,6 +2266,7 @@ initContainer();
 renderItems();
 resize();
 loadPlan();
+window.__lpReady = true; // báo cho bộ kiểm tra khởi động (index.html) là app đã chạy xong
 /** Khôi phục phương án xếp đã lưu trong dự án */
 function loadPlan() {
   const p = project.plan;

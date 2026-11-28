@@ -221,7 +221,7 @@ body.hsplitting #viewer { pointer-events: none; }
   .report .sw { display: inline-block; width: 10px; height: 10px; border: 1px solid #777; vertical-align: middle; margin-right: 4px; }
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 980px) {
   .layout { grid-template-columns: 1fr !important; grid-template-rows: auto auto; gap: 10px; overflow: auto; }
   .splitter { display: none; }
   .card.grow { min-height: 420px; }
@@ -265,3 +265,51 @@ body.hsplitting #viewer { pointer-events: none; }
 .pal-state { font-weight: 400; font-size: 11px; }
 .opts .chk { display: flex; align-items: center; gap: 6px; font-size: 12px; margin: 4px 0; }
 .pal-grid { margin: 4px 0; }
+
+/* Không có WebGL / lỗi khởi động */
+.no3d { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(520px, calc(100% - 24px)); z-index: 7; background: #fff8e1; border: 1px solid #f9ab00; border-radius: 10px; padding: 12px 14px; font-size: 13px; line-height: 1.5; box-shadow: 0 4px 14px rgba(0,0,0,.12); }
+.boot-err { position: fixed; inset: 0; z-index: 100; background: rgba(238,241,245,.97); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.boot-err > div { background: #fff; border: 1px solid var(--line); border-left: 5px solid var(--bad); border-radius: 10px; padding: 18px 22px; max-width: 620px; font-size: 14px; line-height: 1.55; box-shadow: 0 10px 30px rgba(0,0,0,.12); }
+.boot-err h2 { margin: 0 0 8px; font-size: 18px; color: var(--bad); }
+.boot-err .muted { color: var(--muted); font-size: 12px; }
+.boot-err pre { white-space: pre-wrap; font-size: 11px; max-height: 160px; overflow: auto; background: #f5f7fa; padding: 6px; border-radius: 6px; }
+.q3d { font-size: 12px; padding: 2px 4px; margin-left: 4px; }
+
+/* ===== Thích ứng màn hình / Windows Display Scaling (100–200%) =====
+ * Kích thước trình duyệt "thấy" = độ phân giải ÷ tỷ lệ scale, vd 1920×1080 @150% ≈ 1280×620, 1366×768 @125% ≈ 1093×560. */
+/* Dòng cảnh báo trong phần kết quả: không dùng kiểu nổi của khung chú thích 3D (#tip) — trước đây bị tràn ngang trang */
+.tips .tip { position: static; white-space: normal; pointer-events: auto; z-index: auto; }
+/* Thanh tiêu đề gọn dần để luôn nằm trên 1 dòng */
+@media (max-width: 1500px) { .brand span { display: none; } .pname { min-width: 180px; } }
+@media (max-width: 1440px) {
+  .actions .bt { display: none; }               /* chỉ hiện biểu tượng, chữ xem ở tooltip */
+  .actions button, .actions .help-link { padding: 6px 9px; }
+  .topbar { gap: 8px; padding: 6px 10px; }
+}
+/* Màn hình hẹp vừa (1366 @125%, 1280…): vẫn giữ 2 cột, cột nhập liệu hẹp lại (bảng cuộn ngang bên trong) */
+@media (max-width: 1400px) { .layout { grid-template-columns: var(--left, minmax(440px, 42%)) 10px minmax(0, 1fr); } }
+/* Màn hình thấp (laptop scale 125–150%): bớt khoảng trống, phần nhập liệu tự cuộn, nút Tính toán luôn trong tầm nhìn */
+@media (max-height: 760px) and (min-width: 981px) {
+  .layout { padding: 6px; }
+  .panel { gap: 6px; }
+  .card { padding: 6px 8px; }
+  .card-h { margin-bottom: 4px; }
+  .panel.left { overflow-y: auto; }
+  .card.grow { min-height: 300px; }
+  .run { position: sticky; bottom: 0; padding: 7px; }
+  .legend-help { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; cursor: help; }
+  .legend-help:hover { -webkit-line-clamp: unset; }
+  #viewer { min-height: 200px; }
+  .bottom { max-height: 24vh; }
+  .stats { padding: 5px 8px; min-width: 180px; }
+  .manual { width: 270px; }
+  .fleet-wrap { max-height: 120px; }
+}
+/* Khung Xếp tay không che hết khung 3D khi khung 3D hẹp */
+@media (max-width: 1400px) { .manual { width: 260px; } }
+/* Màn hình lớn ở scale 100% (2K / 4K): chữ to hơn một chút cho dễ đọc */
+@media (min-width: 2200px) { body { font-size: 14px; } button.small, .chk, .tabs .tab { font-size: 13px; } }
+/* Danh sách bản sao lưu */
+.bk-list { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; max-height: 50vh; overflow: auto; }
+.bk-list button { text-align: left; }
+.bk-list button small { color: var(--muted); }
