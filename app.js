@@ -729,9 +729,12 @@ function tipsHtml() {
   if (!result) return '';
   const tips = analyzePlan(), nw = tips.filter(t => t.lvl === 'warn').length, nt = tips.filter(t => t.lvl === 'tip').length;
   const ic = { warn: '⚠', tip: '💡', info: '', ok: '' };
-  return `<details class="tips" ${nw || nt ? 'open' : ''}><summary>💡 Gợi ý & cảnh báo <small>${nw ? `${nw} cảnh báo` : ''}${nw && nt ? ' · ' : ''}${nt ? `${nt} mẹo` : ''}</small></summary>`
+  let pref = null; try { pref = localStorage.getItem('loadplanner.tipsOpen'); } catch {}
+  const open = pref != null ? pref === '1' : (nw || nt) && innerHeight >= 860;
+  return `<details class="tips" ${open ? 'open' : ''}><summary>💡 Gợi ý & cảnh báo <small>${nw ? `${nw} cảnh báo` : ''}${nw && nt ? ' · ' : ''}${nt ? `${nt} mẹo` : ''}</small></summary>`
     + tips.map(t => `<div class="tip ${t.lvl}" ${t.c != null ? `data-goc="${t.c}" title="Bấm để xem container #${t.c + 1}"` : ''}>${ic[t.lvl] ? ic[t.lvl] + ' ' : ''}${t.html}</div>`).join('') + '</details>';
 }
+$('#summary').addEventListener('toggle', e => { if (e.target.classList?.contains('tips')) try { localStorage.setItem('loadplanner.tipsOpen', e.target.open ? '1' : '0'); } catch {} }, true);
 $('#summary').addEventListener('click', e => {
   const d = e.target.closest('[data-goc]'); if (!d || !result) return;
   const i = +d.dataset.goc; if (i === current || !result.containers[i]) return;
@@ -1015,14 +1018,11 @@ $('#vLabels').onchange = () => setStep(+$('#step').value);
 
 function renderStats(st) {
   const C = result.container;
-  const cogX = st.cog ? st.cog.x / C.l * 100 : 0, cogY = st.cog ? st.cog.y / C.w * 100 : 0;
-  const cogWarn = st.cog && (Math.abs(cogX - 50) > 15 || Math.abs(cogY - 50) > 10);
   $('#stats').hidden = false;
   $('#stats').innerHTML = `
     <div class="row"><b>Container #${current + 1}</b><span>${fmt(C.l)}×${fmt(C.w)}×${fmt(C.h)}</span></div>
     <div class="row"><span>Số kiện</span><b>${fmt(st.n)}</b></div>
-    ${cogWarn ? '<div class="warn">⚠ Trọng tâm lệch nhiều khỏi giữa</div>' : ''}
-    ${(() => { const n = result.containers[current].boxes.filter(b => b.bad).length; return n ? `<div class="warn">⚠ ${n} kiện đặt tạm sai vị trí (tô đỏ) — chọn kiện rồi xoay (R) / di chuyển (M)</div>` : ''; })()}`;
+`;
 }
 
 /* ---------- Trình tự xếp ---------- */
@@ -1334,7 +1334,36 @@ function renderManual() {
   $('#mPaste').disabled = !manual.clip;
   $('#mCopy').textContent = nSel ? `⧉ Copy (${nSel})` : '⧉ Copy';
   $('#mPaste').classList.toggle('active', !!manual.gpick);
+  updHint();
 }
+/** Dòng hướng dẫn: cho biết đang ở bước nào và bấm phím gì tiếp theo */
+function updHint() {
+  const el = $('#mHint'); if (!el || !manual.on || !result) return;
+  const p = manual.pick, many = selList().length, nBad = curC()?.boxes.filter(b => b.bad).length || 0;
+  const k = s => `<kbd>${s}</kbd>`;
+  let h;
+  if (manual.gpick) h = `📋 Đang dán nhóm: click vào cont để đặt · ${k('R')} xoay nhóm · ${k('Esc')} thôi`;
+  else if (p?.from) h = `✥ Đang di chuyển kiện: click chỗ mới hoặc ${k('Enter')} · ${k('R')} xoay · ${k('Esc')} huỷ`;
+  else if (p) h = `<b>${esc(result.items[p.t].name)}</b>: ${k('Enter')} đặt · click cont = chỗ khác · ${k('R')} xoay · ${k('G')} gợi ý · ${k('Esc')} thôi`;
+  else if (many) h = `Đã chọn ${many} kiện: ${many === 1 ? `${k('M')} di chuyển · ${k('R')} xoay · ` : ''}${k('Del')} xoá · ${k('Ctrl+C')} copy · ${k('Esc')} bỏ chọn`;
+  else h = `👇 Bấm 1 loại kiện bên dưới để bắt đầu đặt · click kiện trong cont để chọn · ${k('Shift')}+kéo để quét chọn nhiều`;
+  if (nBad) h += `<div class="m-bad">⚠ ${nBad} kiện đặt tạm sai (tô đỏ) <button class="small" id="mGoBad" title="Chọn kiện sai đầu tiên để xoay (R) / di chuyển (M)">Chọn kiện sai</button></div>`;
+  el.innerHTML = h;
+}
+$('#mHint').addEventListener('click', e => {
+  if (e.target.id !== 'mGoBad') return;
+  const c = curC(), i = c ? c.boxes.findIndex(b => b.bad) : -1; if (i < 0) return;
+  cancelPick(false); manual.sel = i; setStep(+$('#step').value); renderManual();
+  toast('Đã chọn kiện sai — bấm R để xoay, M để di chuyển, Del để xoá.', 4000);
+});
+(() => {
+  const KEY = 'loadplanner.manualMini', AKEY = 'loadplanner.autoSug';
+  const set = on => { $('#manual').classList.toggle('mini', on); $('#mMini').textContent = on ? '▢' : '▁'; $('#mMini').title = on ? 'Mở rộng bảng Xếp tay' : 'Thu gọn bảng Xếp tay để nhìn rõ khung 3D'; try { localStorage.setItem(KEY, on ? '1' : ''); } catch {} };
+  try { set(localStorage.getItem(KEY) === '1'); } catch {}
+  $('#mMini').onclick = () => set(!$('#manual').classList.contains('mini'));
+  try { if (localStorage.getItem(AKEY) === '0') $('#mAutoSug').checked = false; } catch {}
+  $('#mAutoSug').onchange = e => { try { localStorage.setItem(AKEY, e.target.checked ? '1' : '0'); } catch {} if (e.target.checked) autoSuggest(); };
+})();
 $('#mSelAll').onclick = () => { cancelPick(false); manual.setMulti(new Set(curC()?.boxes || [])); setStep(+$('#step').value); renderManual(); };
 $('#mCopy').onclick = () => copySel(false);
 $('#mCut').onclick = () => copySel(true);
@@ -1470,6 +1499,7 @@ function startPick(t, from = null, oiInit = 0) {
   syncPosPanel();
   showSugs();
   if (lastMove) updateGhost(lastMove);
+  if (!from) autoSuggest();
 }
 function cancelPick(rerender = true, keepPaste = false) {
   const p = manual.pick;
@@ -1500,7 +1530,11 @@ function snap1(v, size, lines) {
 }
 function updateGhost(e) {
   const p = manual.pick; if (!p || !ghost) return;
-  if ($('#mLock').checked) return; // vị trí đang khoá — không chạy theo chuột
+  if ($('#mLock').checked) { // vị trí đang khoá — không chạy theo chuột (khoá mềm của Tự gợi ý: rê chuột > 14px là nhả)
+    const sl = manual.softLock;
+    if (!sl || Math.hypot(e.clientX - sl.x, e.clientY - sl.y) < 14) return;
+    $('#mLock').checked = false; manual.softLock = null;
+  }
   const C = result.container, c = curC();
   const [l, w, h] = p.oris[p.oi];
   const r = setRay(e);
@@ -1577,20 +1611,20 @@ function syncPosPanel() {
 }
 function posFromInputs() {
   const p = manual.pick; if (!p) return;
-  $('#mLock').checked = true;
+  $('#mLock').checked = true; manual.softLock = null;
   setGhostAt(+$('#mX').value || 0, +$('#mY').value || 0);
 }
 $('#mX').addEventListener('input', posFromInputs);
 $('#mY').addEventListener('input', posFromInputs);
 $('#mOri').onchange = e => { const p = manual.pick; if (!p) return; p.oi = +e.target.value; if (p.pos) setGhostAt(p.pos.x, p.pos.y); else syncPosPanel(); showSugs(); };
-$('#mLock').onchange = () => { if (!$('#mLock').checked && lastMove) updateGhost(lastMove); };
+$('#mLock').onchange = () => { manual.softLock = null; if (!$('#mLock').checked && lastMove) updateGhost(lastMove); };
 function nudge(dir) {
   const p = manual.pick; if (!p) return;
   const [l, w] = p.oris[p.oi];
   const s = $('#mStep').value, ax = dir[0], sg = dir[1] === '+' ? 1 : -1;
   const step = s === 'k' ? (ax === 'x' ? l : w) : +s;
   const pos = p.pos || { x: 0, y: 0 };
-  $('#mLock').checked = true;
+  $('#mLock').checked = true; manual.softLock = null;
   setGhostAt(pos.x + (ax === 'x' ? sg * step : 0), pos.y + (ax === 'y' ? sg * step : 0));
 }
 document.querySelector('.m-nudge').addEventListener('click', e => { const n = e.target.dataset.n; if (n) nudge(n); });
@@ -1701,8 +1735,9 @@ function placeAtAnchor(s) {
 $('#mAncOn').onchange = () => updateAnchors();
 
 /** Gợi ý vị trí: thử các góc cạnh kiện đã xếp, chọn chỗ hợp lệ sâu nhất (X nhỏ), thấp nhất, sát trái */
-function suggestPos() {
-  const p = manual.pick; if (!p) return toast('Hãy chọn 1 loại kiện trước.');
+function suggestPos(quiet = false) {
+  const p = manual.pick; if (!p) { if (!quiet) toast('Hãy chọn 1 loại kiện trước.'); return false; }
+  manual.softLock = null;
   const others = othersOf(p), othersU = withUnits(others);
   const pts = [[0, 0]];
   for (const b of others) pts.push([b.x + b.l, b.y], [b.x, b.y + b.w], [b.x, b.y], [b.x + b.l, 0], [0, b.y + b.w], [b.x + b.l, b.y + b.w]);
@@ -1721,10 +1756,24 @@ function suggestPos() {
     }
     if (best) break;
   }
-  if (!best) return toast('Không còn chỗ trống hợp lệ cho kiện này trong cont đang xem.');
-  if (best.oi !== p.oi) { p.oi = best.oi; toast('Đã đổi hướng đặt để vừa chỗ trống.'); }
+  if (!best) { if (!quiet) toast('Không còn chỗ trống hợp lệ cho kiện này trong cont đang xem.'); return false; }
+  if (best.oi !== p.oi) { p.oi = best.oi; if (!quiet) toast('Đã đổi hướng đặt để vừa chỗ trống.'); }
   $('#mLock').checked = true;
   setGhostAt(best.cand.x, best.cand.y);
+  return true;
+}
+/** Tự gợi ý chỗ kế tiếp: khối mờ nhảy tới chỗ tốt nhất (khoá "mềm" — rê chuột vào cont là khối mờ lại chạy theo chuột) */
+function autoSuggest() {
+  const p = manual.pick; if (!p || p.from || !$('#mAutoSug').checked) return false;
+  if (!suggestPos(true)) return false;
+  manual.softLock = { x: lastMove?.clientX ?? -1e9, y: lastMove?.clientY ?? -1e9 };
+  return true;
+}
+/** Loại kiện kế tiếp còn hàng (theo thứ tự danh sách, sau loại t) */
+function nextType(t) {
+  const rem = remainingByType(), n = result.items.length;
+  for (let k = 1; k < n; k++) { const i = (t + k) % n; if (result.items[i].qty && rem[i] > 0) return i; }
+  return -1;
 }
 
 function placeGhost(e) {
@@ -1740,9 +1789,14 @@ function placeGhost(e) {
     manual.sel = c.boxes.length - 1; cancelPick(false); afterEdit(); warnForced(p.reason); return;
   }
   afterEdit();
-  if (remainingByType()[p.t] <= 0) { cancelPick(); toast('Đã xếp hết loại kiện này.'); return; }
+  if (remainingByType()[p.t] <= 0) {
+    const nx = $('#mAutoSug').checked ? nextType(p.t) : -1;
+    if (nx >= 0) { startPick(nx); toast(`Đã xếp hết ${result.items[p.t].name} — chuyển sang ${result.items[nx].name}.`, 3500); return; }
+    cancelPick(); toast('Đã xếp hết loại kiện này.'); return;
+  }
   showSugs();                                     // gợi ý chỗ cho kiện tiếp theo
-  if ($('#mLock').checked) suggestPos();          // đang khoá vị trí: tự nhảy sang chỗ trống kế tiếp
+  if ($('#mLock').checked && !manual.softLock) suggestPos();   // đang khoá vị trí: tự nhảy sang chỗ trống kế tiếp
+  else if (autoSuggest()) { /* Tự gợi ý chỗ kế tiếp */ }
   else if (e) updateGhost(e);
   else syncPosPanel();
 }

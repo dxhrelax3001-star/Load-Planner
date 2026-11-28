@@ -313,3 +313,40 @@ body.hsplitting #viewer { pointer-events: none; }
 .bk-list { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; max-height: 50vh; overflow: auto; }
 .bk-list button { text-align: left; }
 .bk-list button small { color: var(--muted); }
+
+/* Thanh tiêu đề: màn hẹp hiện nhãn ngắn (không chỉ biểu tượng); rất hẹp mới chỉ còn biểu tượng */
+.actions .bs { display: none; }
+@media (max-width: 1440px) { .actions .bs { display: inline; } .actions button { padding: 6px 7px; } .actions { gap: 4px; } }
+@media (max-width: 1200px) { .pname { min-width: 130px; } .pname { font-size: 0; gap: 0; } .pname input { font-size: 13px; } }
+@media (max-width: 1100px) { .actions .bs { display: none; } }
+
+/* Bảng kiện trên màn hẹp: ô nhỏ lại, cột màu + tên luôn hiện khi cuộn ngang */
+#items td:nth-child(-n+2), #items th:nth-child(-n+2) { position: sticky; background: #fff; z-index: 1; }
+#items th:nth-child(-n+2) { background: #f5f7fa; z-index: 2; }
+#items td:nth-child(1), #items th:nth-child(1) { left: 0; }
+#items td:nth-child(2), #items th:nth-child(2) { left: 30px; box-shadow: 2px 0 0 var(--line); }
+@media (max-width: 1440px) {
+  #items input[type=number] { width: 54px; }
+  #items input.qty { width: 44px; } #items input.pr { width: 36px; } #items input.ml { width: 50px; }
+  #items input.name { min-width: 96px; }
+  #items select { max-width: 96px; }
+}
+
+/* Xếp tay: dòng hướng dẫn theo ngữ cảnh, thu gọn bảng */
+.m-h { align-items: center; gap: 6px; }
+.m-h span { margin-left: auto; }
+.m-mini { padding: 0 7px; line-height: 18px; }
+.m-hint { background: #eef4ff; border: 1px solid #cddcf8; border-radius: 6px; padding: 5px 7px; font-size: 11.5px; line-height: 1.6; color: #1d3a66; }
+.m-hint kbd { display: inline-block; min-width: 16px; padding: 0 4px; border: 1px solid #b9c7da; border-bottom-width: 2px; border-radius: 4px; background: #fff; font: 600 10.5px/15px Consolas, monospace; text-align: center; color: #14243a; }
+.m-bad { margin-top: 4px; color: var(--bad); font-weight: 600; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.m-bad button { color: var(--bad); border-color: #f0c0c0; }
+.m-autosug { color: var(--text); font-weight: 600; }
+.manual.mini > :not(.m-h):not(.m-hint) { display: none; }
+.manual.mini { width: 240px; }
+/* Ô số trong bảng kiện: bỏ nút tăng/giảm (vẫn dùng phím ↑ ↓) để đủ chỗ hiện số */
+#items input[type=number]::-webkit-inner-spin-button, #items input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+#items input[type=number] { -moz-appearance: textfield; padding-right: 4px; }
+/* Bảng Xếp tay: danh sách loại kiện lên trước, các nút công cụ xuống dưới */
+.manual > .m-h { order: 0; } .manual > .m-hint { order: 1; } .manual > .m-autosug { order: 2; } .manual > .m-list { order: 3; }
+.manual > #mPos { order: 4; } .manual > #mSel { order: 5; } .manual > .m-tools { order: 6; } .manual > .m-auto { order: 7; } .manual > .m-help { order: 8; }
+.manual > .m-list { min-height: 118px; }

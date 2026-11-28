@@ -56,16 +56,16 @@
   <div class="brand">📦 <b>Load Planner</b><b class="by">by DxH</b> <span>Xếp hàng container 3D</span></div>
   <label class="pname" title="Tên dự án — dùng làm tên file khi Lưu, tiêu đề báo cáo PDF / Excel / In">📁 Dự án <input id="projName" placeholder="Nhập tên dự án…" maxlength="120"></label>
   <div class="actions">
-    <button id="btnNew" title="Dự án mới">🗋<span class="bt"> Mới</span></button>
-    <button id="btnOpen" title="Mở file dự án .json">📂<span class="bt"> Mở</span></button>
-    <button id="btnSave" title="Lưu dự án ra file .json">💾<span class="bt"> Lưu</span></button>
-    <button id="btnRestore" title="Khôi phục bản lưu tự động (5 bản gần nhất trong trình duyệt)">🕘<span class="bt"> Khôi phục</span></button>
+    <button id="btnNew" title="Dự án mới">🗋<span class="bt"> Mới</span><span class="bs"> Mới</span></button>
+    <button id="btnOpen" title="Mở file dự án .json">📂<span class="bt"> Mở</span><span class="bs"> Mở</span></button>
+    <button id="btnSave" title="Lưu dự án ra file .json">💾<span class="bt"> Lưu</span><span class="bs"> Lưu</span></button>
+    <button id="btnRestore" title="Khôi phục bản lưu tự động (5 bản gần nhất trong trình duyệt)">🕘<span class="bt"> Khôi phục</span><span class="bs"> Bản cũ</span></button>
     <span class="sep"></span>
-    <button id="btnImport" title="Nhập danh sách kiện từ Excel/CSV">📥<span class="bt"> Nhập Excel</span></button>
-    <button id="btnTemplate" title="Tải file Excel mẫu">📄<span class="bt"> File mẫu</span></button>
-    <button id="btnExport" title="Xuất kế hoạch xếp hàng ra Excel">📤<span class="bt"> Xuất Excel</span></button>
-    <button id="btnPdf" title="Tải file PDF: tổng hợp, hình 3D, trình tự xếp, hình cắt lớp">📄<span class="bt"> Xuất PDF</span></button>
-    <button id="btnPrint" title="In báo cáo kế hoạch xếp hàng">🖨<span class="bt"> In</span></button>
+    <button id="btnImport" title="Nhập danh sách kiện từ Excel/CSV">📥<span class="bt"> Nhập Excel</span><span class="bs"> Nhập XLS</span></button>
+    <button id="btnTemplate" title="Tải file Excel mẫu">📋<span class="bt"> File mẫu</span><span class="bs"> Mẫu</span></button>
+    <button id="btnExport" title="Xuất kế hoạch xếp hàng ra Excel">📤<span class="bt"> Xuất Excel</span><span class="bs"> Xuất XLS</span></button>
+    <button id="btnPdf" title="Tải file PDF: tổng hợp, hình 3D, trình tự xếp, hình cắt lớp">📄<span class="bt"> Xuất PDF</span><span class="bs"> PDF</span></button>
+    <button id="btnPrint" title="In báo cáo kế hoạch xếp hàng">🖨<span class="bt"> In</span><span class="bs"> In</span></button>
     <span class="sep"></span>
     <a href="huong-dan.html" target="_blank" class="help-link" title="Hướng dẫn sử dụng (mở tab mới)">❓<span class="bt"> Hướng dẫn</span></a>
   </div>
@@ -184,7 +184,9 @@
       <div id="tip" class="tip" hidden></div>
       <div id="stats" class="stats" hidden></div>
       <div id="manual" class="manual" hidden>
-        <div class="m-h"><b>✋ Xếp tay</b> <span id="mCont"></span></div>
+        <div class="m-h"><b>✋ Xếp tay</b> <span id="mCont"></span><button id="mMini" class="small m-mini" title="Thu gọn / mở rộng bảng Xếp tay để nhìn rõ khung 3D">▁</button></div>
+        <div id="mHint" class="m-hint"></div>
+        <label class="m-lock m-autosug" title="Sau khi đặt 1 kiện, khối mờ tự nhảy sang chỗ trống tốt nhất kế tiếp — chỉ cần bấm Enter. Hết loại kiện thì tự chuyển sang loại còn lại. Rê chuột vào cont để tự chọn chỗ khác."><input type="checkbox" id="mAutoSug" checked> Tự gợi ý chỗ kế tiếp (chỉ cần bấm Enter)</label>
         <div class="m-tools">
           <button id="mUndo" class="small" title="Hoàn tác (Ctrl+Z)">↶</button>
           <button id="mRedo" class="small" title="Làm lại (Ctrl+Y)">↷</button>
